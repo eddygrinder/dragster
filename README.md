@@ -1,8 +1,3 @@
-Claro! Aqui está o mesmo **README.md**, totalmente limpo — sem ícones ou emojis — e pronto para copiar/colar diretamente no GitHub:
-
----
-
-````markdown
 # Projeto Dragster — Festival Nacional de Robótica
 
 ## O que o projeto faz
