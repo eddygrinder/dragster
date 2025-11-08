@@ -1,3 +1,8 @@
+Claro 👍 Aqui tens o **README.md** completo, formatado e pronto para copiares e colares diretamente no GitHub:
+
+---
+
+````markdown
 # 🏎️ Projeto Dragster — Festival Nacional de Robótica
 
 ## 🧩 O que o projeto faz
@@ -20,13 +25,13 @@ O objetivo é documentar e partilhar o processo de programação, testes e otimi
 3. **Configurar o ambiente ESP32** (selecionar porta, chip e SDK).
 4. **Compilar e carregar o firmware** para o ESP32:
 
-   * Menu ESP-IDF → *Build*, *Flash*, *Monitor*
+   * Através do menu ESP-IDF: *Build*, *Flash*, *Monitor*
    * Ou via terminal:
 
      ```bash
      idf.py build flash monitor
      ```
-5. Consultar as pastas:
+5. **Consultar as pastas principais:**
 
    * `src/` → código principal
    * `experiencias/` → testes e medições
@@ -34,17 +39,21 @@ O objetivo é documentar e partilhar o processo de programação, testes e otimi
 
 ## 🆘 Onde os utilizadores podem obter ajuda
 
-* **Documentação oficial ESP-IDF:** [https://docs.espressif.com](https://docs.espressif.com)
-* **FreeRTOS oficial:** [https://www.freertos.org](https://www.freertos.org)
-* **Issues do repositório:** use a aba [Issues](../../issues) para reportar problemas ou colocar dúvidas.
-* Pode também contactar os **membros da equipa** através da secção *Discussions*.
+* 📘 **Documentação oficial ESP-IDF:** [https://docs.espressif.com](https://docs.espressif.com)
+* ⚙️ **FreeRTOS oficial:** [https://www.freertos.org](https://www.freertos.org)
+* 💬 **Issues do repositório:** use a aba [Issues](../../issues) para reportar problemas ou colocar dúvidas.
+* 🧑‍💻 Pode também contactar os **membros da equipa** através da secção *Discussions*.
 
 ## 👥 Quem mantém e contribui com o projeto
 
-O projeto é mantido por uma equipa dedicada ao **Festival Nacional de Robótica**, composta por Eduardo Ramalhadeiro, responsável pelo desenvolvimento do sistema Dragster.
+O projeto é mantido por uma equipa dedicada ao **Festival Nacional de Robótica**, responsável pelo desenvolvimento do sistema Dragster.
 As contribuições são bem-vindas — basta criar um *fork* e submeter um *pull request* com as alterações propostas.
 
 
+> ⚙️ **Tecnologias principais:** ESP32 · FreeRTOS · C/C++ · VS Code · ESP-IDF
+> 📅 **Objetivo:** Participação no Festival Nacional de Robótica — Categoria Dragster
+> 🏁 **Equipa:** Desenvolvimento e implementação de sistema de controlo para robô Dragster
 
-# dragster
-Código para Dragster, usando ESP32 e FreeRTOS
+
+Queres que te gere também o ficheiro `LICENSE` com o texto da licença MIT (pronto para adicionar ao repositório)?
+```
