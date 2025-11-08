@@ -31,7 +31,7 @@ O objetivo é documentar e partilhar o processo de programação, testes e otimi
    * `src/` → código principal
    * `experiencias/` → testes e medições
    * `tutoriais/` → guias de configuração e utilização
-
+```
 ## Onde os utilizadores podem obter ajuda
 
 * **Documentação oficial ESP-IDF:** [https://docs.espressif.com](https://docs.espressif.com)
