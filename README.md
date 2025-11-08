@@ -14,3 +14,38 @@ O objetivo é documentar e partilhar o processo de programação, testes e otimi
 1. **Clonar o repositório:**
    ```bash
    git clone https://github.com/teu-utilizador/nome-do-repositorio.git
+
+2. Abrir no VS Code com a extensão ESP-IDF instalada.
+3. Configurar o ambiente ESP32 (selecionar porta, chip e SDK).
+4.Compilar e carregar o firmware para o ESP32:
+   - Através do menu ESP-IDF: Build, Flash, Monitor
+   - Ou via terminal:
+   ```bash
+   idf.py build flash monitor
+
+5. Consultar as pastas principais:
+   - src/ → código principal
+   - experiencias/ → testes e medições
+   - tutoriais/ → guias de configuração e utilização
+  
+## Onde os utilizadores podem obter ajuda
+Documentação oficial ESP-IDF: https://docs.espressif.com
+   - FreeRTOS oficial: https://www.freertos.org
+   - Issues do repositório: use a aba Issues para reportar problemas ou colocar dúvidas.
+   - Pode também contactar os membros da equipa através da secção Discussions.
+
+## Quem mantém e contribui com o projeto
+O projeto é mantido por uma equipa dedicada ao Festival Nacional de Robótica, responsável pelo desenvolvimento do sistema Dragster.
+As contribuições são bem-vindas — basta criar um fork e submeter um pull request com as alterações propostas.
+
+## Tecnologias principais: 
+   - ESP32
+   - FreeRTOS
+   - C/C++
+   - VS Code
+   - ESP-IDF
+## Objetivo
+Desenvolvimento e implementação de sistema de controlo para robô Dragster para participar no Festival Nacional de Robótica — Categoria Dragster
+
+# Equipa
+Eduardo Ramalhadeiro | Marco Vasconcelos - Agrupamento de Escolas Dr. Serafim Leite - São João da Madeira
