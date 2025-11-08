@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/home/grinder/esp/v5.5.1/esp-idf/components/freertos/FreeRTOS-Kernel-SMP/include/freertos/**",
+                "/home/grinder/esp/v5.5.1/esp-idf/components/freertos/FreeRTOS-Kernel-SMP/include/**",
+                "/home/grinder/esp/v5.5.1/esp-idf/components/**",
+                "/home/grinder/esp/v5.5.1/esp-idf/components/xtensa/include/**"
+            ],
+            "defines": [],
+             "compilerPath": "/home/grinder/.espressif/tools/xtensa-esp-elf/esp-14.2.0_20241119/xtensa-esp-elf/bin/xtensa-esp32-elf-gcc",
+
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}

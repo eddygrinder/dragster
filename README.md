@@ -1,51 +1,53 @@
-# Projeto Dragster - Festival Nacional de Robótica
+| Supported Targets | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C5 | ESP32-C6 | ESP32-C61 | ESP32-H2 | ESP32-H21 | ESP32-H4 | ESP32-P4 | ESP32-S2 | ESP32-S3 | Linux |
+| ----------------- | ----- | -------- | -------- | -------- | -------- | --------- | -------- | --------- | -------- | -------- | -------- | -------- | ----- |
 
-## O que o projeto faz
-Este repositório reúne toda a componente de **software**, **experiências** e **tutoriais** relacionados com o desenvolvimento do **projeto Dragster** para o **Festival Nacional de Robótica**.  
-O objetivo é documentar e partilhar o processo de programação, testes e otimização do sistema de controlo do robô, desenvolvido com **ESP32** e **FreeRTOS** no **VS Code (ESP-IDF)**.
+# Dragster Example
 
-## Por que o projeto é útil
-- Centraliza toda a parte de **software e documentação técnica** do projeto.  
-- Facilita a **colaboração** entre os membros da equipa.  
-- Serve de **referência educativa** para outros participantes ou interessados em aprender sobre **FreeRTOS**, **sistemas embarcados** e **controlo de robôs**.  
-- Garante a **reprodutibilidade das experiências**, promovendo um desenvolvimento mais rigoroso e organizado.
+Starts a FreeRTOS task to print "Dragster".
 
-## Como os utilizadores podem começar a usar o projeto
-1. **Clonar o repositório:**
-   ```bash
-   git clone https://github.com/teu-utilizador/nome-do-repositorio.git
+(See the README.md file in the upper level 'examples' directory for more information about examples.)
 
-2. Abrir no VS Code com a extensão ESP-IDF instalada.
-3. Configurar o ambiente ESP32 (selecionar porta, chip e SDK).
-4.Compilar e carregar o firmware para o ESP32:
-   - Através do menu ESP-IDF: Build, Flash, Monitor
-   - Ou via terminal:
-   ```bash
-   idf.py build flash monitor
+## How to use example
 
-5. Consultar as pastas principais:
-   - src/ → código principal
-   - experiencias/ → testes e medições
-   - tutoriais/ → guias de configuração e utilização
-  
-## Onde os utilizadores podem obter ajuda
-Documentação oficial ESP-IDF: https://docs.espressif.com
-   - FreeRTOS oficial: https://www.freertos.org
-   - Issues do repositório: use a aba Issues para reportar problemas ou colocar dúvidas.
-   - Pode também contactar os membros da equipa através da secção Discussions.
+Follow detailed instructions provided specifically for this example.
 
-## Quem mantém e contribui com o projeto
-O projeto é mantido por uma equipa dedicada ao Festival Nacional de Robótica, responsável pelo desenvolvimento do sistema Dragster.
-As contribuições são bem-vindas — basta criar um fork e submeter um pull request com as alterações propostas.
-### Equipa
-Eduardo Ramalhadeiro | Marco Vasconcelos - Agrupamento de Escolas Dr. Serafim Leite - São João da Madeira
+Select the instructions depending on Espressif chip installed on your development board:
+
+- [ESP32 Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/stable/get-started/index.html)
+- [ESP32-S2 Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/get-started/index.html)
 
 
-## Tecnologias principais: 
-   - ESP32
-   - FreeRTOS
-   - C/C++
-   - VS Code
-   - ESP-IDF
-## Objetivo
-Desenvolvimento e implementação de sistema de controlo para robô Dragster para participar no Festival Nacional de Robótica — Categoria Dragster
+## Example folder contents
+
+The project **Dragster** contains one source file in C language [Dragster_main.c](main/Dragster_main.c). The file is located in folder [main](main).
+
+ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt` files that provide set of directives and instructions describing the project's source files and targets (executable, library, or both).
+
+Below is short explanation of remaining files in the project folder.
+
+```
+├── CMakeLists.txt
+├── pytest_Dragster.py      Python script used for automated testing
+├── main
+│   ├── CMakeLists.txt
+│   └── Dragster_main.c
+└── README.md                  This is the file you are currently reading
+```
+
+For more information on structure and contents of ESP-IDF projects, please refer to Section [Build System](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html) of the ESP-IDF Programming Guide.
+
+## Troubleshooting
+
+* Program upload failure
+
+    * Hardware connection is not correct: run `idf.py -p PORT monitor`, and reboot your board to see if there are any output logs.
+    * The baud rate for downloading is too high: lower your baud rate in the `menuconfig` menu, and try again.
+
+## Technical support and feedback
+
+Please use the following feedback channels:
+
+* For technical queries, go to the [esp32.com](https://esp32.com/) forum
+* For a feature request or bug report, create a [GitHub issue](https://github.com/espressif/esp-idf/issues)
+
+We will get back to you as soon as possible.

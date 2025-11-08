@@ -1,0 +1,13 @@
+# Target labels
+ bootloader
+# Source files and their labels
+/home/grinder/Documents/dragster/build/CMakeFiles/bootloader
+/home/grinder/Documents/dragster/build/CMakeFiles/bootloader.rule
+/home/grinder/Documents/dragster/build/CMakeFiles/bootloader-complete.rule
+/home/grinder/Documents/dragster/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule
+/home/grinder/Documents/dragster/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule
+/home/grinder/Documents/dragster/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule
+/home/grinder/Documents/dragster/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule
+/home/grinder/Documents/dragster/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule
+/home/grinder/Documents/dragster/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule
+/home/grinder/Documents/dragster/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule

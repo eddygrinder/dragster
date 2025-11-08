@@ -1,0 +1,2 @@
+source /home/grinder/Documents/dragster/build/bootloader/gdbinit/symbols
+source /home/grinder/Documents/dragster/build/bootloader/gdbinit/connect
