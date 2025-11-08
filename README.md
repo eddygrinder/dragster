@@ -37,6 +37,9 @@ Documentação oficial ESP-IDF: https://docs.espressif.com
 ## Quem mantém e contribui com o projeto
 O projeto é mantido por uma equipa dedicada ao Festival Nacional de Robótica, responsável pelo desenvolvimento do sistema Dragster.
 As contribuições são bem-vindas — basta criar um fork e submeter um pull request com as alterações propostas.
+### Equipa
+Eduardo Ramalhadeiro | Marco Vasconcelos - Agrupamento de Escolas Dr. Serafim Leite - São João da Madeira
+
 
 ## Tecnologias principais: 
    - ESP32
@@ -46,6 +49,3 @@ As contribuições são bem-vindas — basta criar um fork e submeter um pull re
    - ESP-IDF
 ## Objetivo
 Desenvolvimento e implementação de sistema de controlo para robô Dragster para participar no Festival Nacional de Robótica — Categoria Dragster
-
-# Equipa
-Eduardo Ramalhadeiro | Marco Vasconcelos - Agrupamento de Escolas Dr. Serafim Leite - São João da Madeira
