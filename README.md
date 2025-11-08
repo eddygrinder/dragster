@@ -1,4 +1,4 @@
-# Projeto Dragster — Festival Nacional de Robótica
+# Projeto Dragster - Festival Nacional de Robótica
 
 ## O que o projeto faz
 Este repositório reúne toda a componente de **software**, **experiências** e **tutoriais** relacionados com o desenvolvimento do **projeto Dragster** para o **Festival Nacional de Robótica**.  
