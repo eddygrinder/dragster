@@ -1,8 +1,3 @@
-Claro 👍 Aqui tens o **README.md** completo, formatado e pronto para copiares e colares diretamente no GitHub:
-
----
-
-````markdown
 # 🏎️ Projeto Dragster — Festival Nacional de Robótica
 
 ## 🧩 O que o projeto faz
