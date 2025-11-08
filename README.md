@@ -49,6 +49,3 @@ As contribuições são bem-vindas — basta criar um *fork* e submeter um *pull
 > 📅 **Objetivo:** Participação no Festival Nacional de Robótica — Categoria Dragster
 > 🏁 **Equipa:** Desenvolvimento e implementação de sistema de controlo para robô Dragster
 
-
-Queres que te gere também o ficheiro `LICENSE` com o texto da licença MIT (pronto para adicionar ao repositório)?
-```
