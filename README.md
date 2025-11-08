@@ -14,7 +14,7 @@ O objetivo é documentar e partilhar o processo de programação, testes e otimi
 1. **Clonar o repositório:**
    ```bash
    git clone https://github.com/teu-utilizador/nome-do-repositorio.git
-````
+```
 
 2. **Abrir no VS Code** com a extensão **ESP-IDF** instalada.
 3. **Configurar o ambiente ESP32** (selecionar porta, chip e SDK).
@@ -31,7 +31,7 @@ O objetivo é documentar e partilhar o processo de programação, testes e otimi
    * `src/` → código principal
    * `experiencias/` → testes e medições
    * `tutoriais/` → guias de configuração e utilização
-```
+
 ## Onde os utilizadores podem obter ajuda
 
 * **Documentação oficial ESP-IDF:** [https://docs.espressif.com](https://docs.espressif.com)
