@@ -14,14 +14,16 @@
 #include "esp_system.h"
 #include "esp_log.h"
 
+static const char *TAG1 = "TASK1";
+static const char *TAG2 = "TASK2";
+
 void vTask1(void *pvParameters)
 {
     /* ulCount is declared volatile to ensure it is not optimized out. */
     for (;;)
     {
         /* Print out the name of the current task task. */
-        ESP_LOGI("TASK1", "Task 1 is running");
-        //printf("Task 1 is running\n");
+        ESP_LOGI(TAG1, "Task 1 rodando no Core %d", xPortGetCoreID()); 
         /* Delay for a period. */
         vTaskDelay(pdMS_TO_TICKS(1000)); // 1 segundo
     }
@@ -33,8 +35,8 @@ void vTask2(void *pvParameters)
     for (;;)
     {
         /* Print out the name of this task. */
-        ESP_LOGI("TASK2", "Task 2 is running");
-        //printf("Task 2 is running\n");
+        ESP_LOGI(TAG2, "Task 2 rodando no Core %d", xPortGetCoreID());
+        // printf("Task 2 is running\n");
         /* Delay for a period. */
         vTaskDelay(pdMS_TO_TICKS(1000)); // 1 segundo
     }
@@ -52,16 +54,22 @@ void app_main(void)
      * the return value of the xTaskCreate() call to ensure the task was
      * created successfully.
      */
-    xTaskCreate(vTask1,   /* Pointer to the function that implements the task.*/
-                "Task 1", /* Text name for the task. */
-                2048,     /* Stack depth in words. */
-                NULL,     /* This example does not use the task parameter. */
-                1,        /* This task will run at priority 1. */
-                NULL);    /* This example does not use the task handle. */
+    xTaskCreatePinnedToCore(vTask1,   /* Pointer to the function that implements the task.*/
+                            "Task 1", /* Text name for the task. */
+                            2048,     /* Stack depth in words. */
+                            NULL,     /* This example does not use the task parameter. */
+                            1,        /* This task will run at priority 1. */
+                            NULL,
+                            0); /* This example does not use the task handle. */
 
     /* Create the other task in exactly the same way and at the same priority.*/
-    xTaskCreate(vTask2, "Task 2", 2048, NULL, 1, NULL);
-
+    xTaskCreatePinnedToCore(vTask2,   /* Pointer to the function that implements the task.*/
+                            "Task 2", /* Text name for the task. */
+                            2048,     /* Stack depth in words. */
+                            NULL,     /* This example does not use the task parameter. */
+                            1,        /* This task will run at priority 1. */
+                            NULL,
+                            1); /* This example does not use the task handle. */
     /*
      * If all is well main() will not reach here because the scheduler will now
      * be running the created tasks. If main() does reach here then there was
@@ -69,5 +77,4 @@ void app_main(void)
      * (described later in this book). Chapter 3 provides more information on
      * heap memory management.
      */
-
 }

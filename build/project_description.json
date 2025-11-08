@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "Dragster",
-    "project_version":    "08df446-dirty",
+    "project_version":    "6ca1f3d-dirty",
     "project_path":       "/home/grinder/Documents/dragster",
     "idf_path":           "/home/grinder/esp/v5.5.1/esp-idf",
     "build_dir":          "/home/grinder/Documents/dragster/build",
