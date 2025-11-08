@@ -1,8 +1,3 @@
-Aqui tens um exemplo completo e profissional de **README.md** para o teu repositório GitHub, adaptado ao contexto do **projeto de Dragster no Festival Nacional de Robótica**, usando **ESP32 + FreeRTOS + VS Code**:
-
----
-
-````markdown
 # 🏎️ Projeto Dragster — Festival Nacional de Robótica
 
 ## 🧩 O que o projeto faz
