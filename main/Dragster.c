@@ -1,80 +1,60 @@
-/*
- * SPDX-FileCopyrightText: 2010-2022 Espressif Systems (Shanghai) CO LTD
- *
- * SPDX-License-Identifier: CC0-1.0
- */
-
 #include <stdio.h>
-#include <inttypes.h>
-#include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_chip_info.h"
-#include "esp_flash.h"
-#include "esp_system.h"
-#include "esp_log.h"
+#include "esp_adc/adc_oneshot.h"
 
-static const char *TAG1 = "TASK1";
-static const char *TAG2 = "TASK2";
+// Handles do ADC
+adc_oneshot_unit_handle_t adc1_handle;
 
-void vTask1(void *pvParameters)
-{
-    /* ulCount is declared volatile to ensure it is not optimized out. */
-    for (;;)
-    {
-        /* Print out the name of the current task task. */
-        ESP_LOGI(TAG1, "Task 1 rodando no Core %d", xPortGetCoreID()); 
-        /* Delay for a period. */
-        vTaskDelay(pdMS_TO_TICKS(1000)); // 1 segundo
-    }
-}
-
-void vTask2(void *pvParameters)
-{
-    /* As per most tasks, this task is implemented in an infinite loop. */
-    for (;;)
-    {
-        /* Print out the name of this task. */
-        ESP_LOGI(TAG2, "Task 2 rodando no Core %d", xPortGetCoreID());
-        // printf("Task 2 is running\n");
-        /* Delay for a period. */
-        vTaskDelay(pdMS_TO_TICKS(1000)); // 1 segundo
-    }
-}
+void sensorTask(void *pvParameters);
 
 void app_main(void)
 {
-    /*
-     * Variables declared here may no longer exist after starting the FreeRTOS
-     * scheduler. Do not attempt to access variables declared on the stack used
-     * by main() from tasks.
-     */
-    /*
-     * Create one of the two tasks. Note that a real application should check
-     * the return value of the xTaskCreate() call to ensure the task was
-     * created successfully.
-     */
-    xTaskCreatePinnedToCore(vTask1,   /* Pointer to the function that implements the task.*/
-                            "Task 1", /* Text name for the task. */
-                            2048,     /* Stack depth in words. */
-                            NULL,     /* This example does not use the task parameter. */
-                            1,        /* This task will run at priority 1. */
-                            NULL,
-                            0); /* This example does not use the task handle. */
+    // ================================
+    // 1) Inicializar o ADC1
+    // ================================
+    adc_oneshot_unit_init_cfg_t init_config = {
+        .unit_id = ADC_UNIT_1
+    };
+    adc_oneshot_new_unit(&init_config, &adc1_handle);
 
-    /* Create the other task in exactly the same way and at the same priority.*/
-    xTaskCreatePinnedToCore(vTask2,   /* Pointer to the function that implements the task.*/
-                            "Task 2", /* Text name for the task. */
-                            2048,     /* Stack depth in words. */
-                            NULL,     /* This example does not use the task parameter. */
-                            1,        /* This task will run at priority 1. */
-                            NULL,
-                            1); /* This example does not use the task handle. */
-    /*
-     * If all is well main() will not reach here because the scheduler will now
-     * be running the created tasks. If main() does reach here then there was
-     * not enough heap memory to create either the idle or timer tasks
-     * (described later in this book). Chapter 3 provides more information on
-     * heap memory management.
-     */
+    // ================================
+    // 2) Configurar cada canal (sensor)
+    // ================================
+    adc_oneshot_chan_cfg_t config = {
+        .bitwidth = ADC_BITWIDTH_DEFAULT,   // Normalmente 12 bits
+        .atten = ADC_ATTEN_DB_12            // Para ler até ~3.3V
+    };
+    adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_6, &config); // Sensor esq - verde/laranja
+    adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_7, &config); // Sensor central esq branco/cinzento
+    adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_4, &config); // Sensor central dir vermelho/castanho
+    adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_5, &config); // Sensor dir verde/amarelo
+
+    // ================================
+    // 3) Criar a tarefa que lê os sensores
+    // ================================
+    xTaskCreate(sensorTask, "Sensor Task", 2048, NULL, 1, NULL);
+}
+
+// ================================
+// TAREFA QUE LÊ OS 3 SENSORES
+// ================================
+void sensorTask(void *pvParameters)
+{
+    int s1, s2, s3, s4; // Variáveis para armazenar os valores lidos
+
+    while (1)
+    {
+        // Ler valor de cada canal
+        adc_oneshot_read(adc1_handle, ADC_CHANNEL_6, &s1);
+        adc_oneshot_read(adc1_handle, ADC_CHANNEL_7, &s2);
+        adc_oneshot_read(adc1_handle, ADC_CHANNEL_4, &s3);
+        adc_oneshot_read(adc1_handle, ADC_CHANNEL_5, &s4);
+
+        // Imprimir resultados
+        printf("S1: %d  S2: %d S3: %d   S4: %d\n", s1, s2, s3, s4);
+
+        // Esperar 100 ms antes da próxima leitura
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
 }
