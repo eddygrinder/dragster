@@ -1,0 +1,2 @@
+source /home/grinder/Documents/GitHub/Dragster/build/bootloader/gdbinit/symbols
+source /home/grinder/Documents/GitHub/Dragster/build/bootloader/gdbinit/connect

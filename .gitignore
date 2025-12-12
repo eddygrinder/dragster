@@ -1,0 +1,51 @@
+# ----------------------------------
+# Build e ficheiros gerados
+# ----------------------------------
+/build/                   # pasta de build
+/sdkconfig                # gerado pelo menuconfig (opcional, depende do projeto)
+/sdkconfig.old             # backup antigo
+/CMakeLists.txt.user
+/CMakeCache.txt
+/CMakeFiles/
+Makefile
+cmake_install.cmake
+*.cmake
+*.dep
+*.layout
+
+# ----------------------------------
+# VS Code
+# ----------------------------------
+.vscode/*
+!.vscode/settings.json         # mantêm se tiver configs importantes do projeto
+!.vscode/c_cpp_properties.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# ----------------------------------
+# ESP-IDF Tools / Platform specific
+# ----------------------------------
+/.espressif/               # pasta temporária gerada pelo ESP-IDF
+/.pio/                     # se algum dia usares PlatformIO
+
+# ----------------------------------
+# Python virtual environments
+# ----------------------------------
+venv/
+.env/
+__pycache__/
+*.pyc
+
+# ----------------------------------
+# Logs
+# ----------------------------------
+*.log
+
+# ----------------------------------
+# Sistema operativo
+# ----------------------------------
+# Windows
+Thumbs.db
+*.bak
+*.swp
+*.DS_Store                 # macOS
