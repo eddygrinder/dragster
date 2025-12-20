@@ -5,6 +5,7 @@
 #include "driver/gpio.h"
 #include "driver/ledc.h"  // For PWM control
 #include "esp_rom_gpio.h" // Para esp_rom_gpio_pad_select_gpio()
+#include "blinkt.h"
 
 // Handles do ADC
 adc_oneshot_unit_handle_t adc1_handle;
@@ -53,6 +54,10 @@ volatile bool prova_terminada = false; // Flag de fim de prova
 
 void app_main(void)
 {
+    // Inicializa Blinkt!
+    blinkt_init();      // Inicializa os pinos
+    blinkt_white();     // Acende todos os LEDs a branco
+
     // ================================
     // Configurar os GPIOs de direção como saída
     // ================================
@@ -122,7 +127,7 @@ void app_main(void)
     };
     adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_6, &config); // Sensor esq - verde/laranja
     adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_7, &config); // Sensor central esq branco/cinzento
-    adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_4, &config); // Sensor central dir vermelho/castanho
+    adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_3, &config); // Sensor central dir vermelho/castanho
     adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_5, &config); // Sensor dir verde/amarelo
 
     // ================================
@@ -143,7 +148,7 @@ void controlTask(void *pvParameters)
         // Ler valor de cada canal
         adc_oneshot_read(adc1_handle, ADC_CHANNEL_6, &s1);
         adc_oneshot_read(adc1_handle, ADC_CHANNEL_7, &s2);
-        adc_oneshot_read(adc1_handle, ADC_CHANNEL_4, &s3);
+        adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &s3);
         adc_oneshot_read(adc1_handle, ADC_CHANNEL_5, &s4);
 
         line_position = calculaPosicao(s1, s2, s3, s4);
@@ -151,7 +156,7 @@ void controlTask(void *pvParameters)
         // Imprimir resultados
         printf("pos:  %f S1: %d  S2: %d S3: %d   S4: %d \n", line_position, s1, s2, s3, s4);
 
-        if (s1 > LIMITE_PRETO && s2 > LIMITE_PRETO)
+        if (s1 > LIMITE_PRETO && s4 > LIMITE_PRETO)
         {
             // Para os motores
             motor_left_set(0);
@@ -160,8 +165,8 @@ void controlTask(void *pvParameters)
             printf("Prova terminada!\n");
 
             // Loop seguro: a task fica “congelada” e não consome CPU
-            //while (1)
-            //    vTaskDelay(pdMS_TO_TICKS(1000));
+            while (1)
+                vTaskDelay(pdMS_TO_TICKS(1000));
         }
 
         motorControl(line_position);

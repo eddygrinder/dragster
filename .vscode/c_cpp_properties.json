@@ -16,7 +16,10 @@
                 "/home/grinder/esp/v5.5.1/esp-idf/components/xtensa/include/**",
                 "/home/grinder/esp/v5.5.1/esp-idf/components/nvs_flash/include/**",
                 "/home/grinder/esp/v5.5.1/esp-idf/components/log/include/**",
-                "/home/grinder/esp/v5.5.1/esp-idf/components/esp_timer/include/**"
+                "/home/grinder/esp/v5.5.1/esp-idf/components/esp_timer/include/**",
+                "${workspaceFolder}/main",
+                "${workspaceFolder}/components/blinkt/include",
+                "${config:idf.espIdfPath}/components/**"
 
             ],
             "defines": [],

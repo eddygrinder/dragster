@@ -1,2 +1,2 @@
-source /home/grinder/Documents/GitHub/Dragster/build/gdbinit/symbols
-source /home/grinder/Documents/GitHub/Dragster/build/gdbinit/connect
+source /home/grinder/Documents/GitHub/dragster/build/gdbinit/symbols
+source /home/grinder/Documents/GitHub/dragster/build/gdbinit/connect

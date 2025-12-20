@@ -1,4 +1,4 @@
-/* * Data converted from /home/grinder/Documents/GitHub/Dragster/build/esp-idf/mbedtls/x509_crt_bundle
+/* * Data converted from /home/grinder/Documents/GitHub/dragster/build/esp-idf/mbedtls/x509_crt_bundle
  */
 .data
 #if !defined (__APPLE__) && !defined (__linux__)

@@ -18,8 +18,8 @@ end
 
 # Load bootloader symbols
 set confirm off
-    add-symbol-file /home/grinder/Documents/GitHub/Dragster/build/bootloader/bootloader.elf
+    add-symbol-file /home/grinder/Documents/GitHub/dragster/build/bootloader/bootloader.elf
 set confirm on
 
 # Load application symbols
-file /home/grinder/Documents/GitHub/Dragster/build/Dragster.elf
+file /home/grinder/Documents/GitHub/dragster/build/Dragster.elf
