@@ -4,6 +4,7 @@
 #include "esp_adc/adc_oneshot.h"
 #include "driver/gpio.h"
 #include "driver/ledc.h"  // For PWM control
+#include "hal/ledc_types.h" // Adicione esta linha
 #include "esp_rom_gpio.h" // Para esp_rom_gpio_pad_select_gpio()
 #include "blinkt.h"
 
@@ -11,10 +12,10 @@
 adc_oneshot_unit_handle_t adc1_handle;
 
 // Motor Pin definitions
-#define AIN1 13
-#define BIN1 27
-#define AIN2 12
-#define BIN2 14
+#define AIN1 12
+#define BIN1 14
+#define AIN2 13
+#define BIN2 27
 #define PWM1 25
 #define PWM2 26
 
@@ -24,6 +25,7 @@ adc_oneshot_unit_handle_t adc1_handle;
 #define MOTOR_PWM_RES LEDC_TIMER_10_BIT // PWM resolution (10-bit)
 #define MAX_DUTY_CYCLE 1023             // Maximum duty cycle for 10-bit resolution
 
+
 // Motor ESQ
 #define MOTOR_PWM_CHANNEL_ESQ LEDC_CHANNEL_0
 
@@ -32,18 +34,19 @@ adc_oneshot_unit_handle_t adc1_handle;
 
 void controlTask(void *pvParameters);
 void motorControl(float line_position);
+float normalize(int raw, int min, int max);
 
 void motor_left_set(int duty);
 void motor_right_set(int duty);
 
-float calculaPosicao(int s1, int s2, int s3, int s4); // declaração
+float calculaPosicao(float s1_norm, float s2_norm, float s3_norm, float s4_norm); // declaração
 float pos;
-float KP = 0.5f;
-int BASE_SPEED = 80;
+float KP = 100.0f;
+int BASE_SPEED = 700;
 const int LIMITE_PRETO = 3000; // depende da calibração
 
 volatile float line_position = 0.0f;
-
+#define linelost_threshold 0.05f  // linha perdida se soma dos sensores normalizados < 0.05
 typedef struct
 {
     float s1, s2, s3, s4;
@@ -142,6 +145,20 @@ void app_main(void)
 void controlTask(void *pvParameters)
 {
     int s1, s2, s3, s4;
+    float s1_norm, s2_norm, s3_norm, s4_norm; // Valores normalizados entre 0.0 e 1.0
+    // Valores da calibração
+    
+    #define S1_MIN 820
+    #define S1_MAX 3120
+
+    #define S2_MIN 790
+    #define S2_MAX 3050
+
+    #define S3_MIN 840
+    #define S3_MAX 3180
+
+    #define S4_MIN 810
+    #define S4_MAX 3000
 
     while (1)
     {
@@ -151,10 +168,15 @@ void controlTask(void *pvParameters)
         adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &s3);
         adc_oneshot_read(adc1_handle, ADC_CHANNEL_5, &s4);
 
-        line_position = calculaPosicao(s1, s2, s3, s4);
+        s1_norm = normalize(s1, S1_MIN, S1_MAX);
+        s2_norm = normalize(s2, S2_MIN, S2_MAX);
+        s3_norm = normalize(s3, S3_MIN, S3_MAX);
+        s4_norm = normalize(s4, S4_MIN, S4_MAX);
+
+        line_position = calculaPosicao(s1_norm, s2_norm, s3_norm, s4_norm);
 
         // Imprimir resultados
-        printf("pos:  %f S1: %d  S2: %d S3: %d   S4: %d \n", line_position, s1, s2, s3, s4);
+        printf("pos:  %f S1: %.2f  S2: %.2f S3: %.2f   S4: %.2f \n", line_position, s1_norm, s2_norm, s3_norm, s4_norm);
 
         if (s1 > LIMITE_PRETO && s4 > LIMITE_PRETO)
         {
@@ -265,12 +287,22 @@ void motor_right_set(int pwm)
     ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA);
 }
 
-float calculaPosicao(int s1, int s2, int s3, int s4)
+float calculaPosicao(float s1, float s2, float s3, float s4)
 {
-    int soma = s1 + s2 + s3 + s4;
-    if (soma < 50)
+    float soma = s1 + s2 + s3 + s4;
+    if (soma < linelost_threshold)
         return 0; // linha perdida
 
     float pos = (s1 * -1.0f + s2 * -0.33f + s3 * 0.33f + s4 * 1.0f) / soma;
     return pos;
+}
+
+float normalize(int raw, int min, int max)
+{
+    // Limita o valor ao intervalo calibrado - devolve um valor entre 0.0 e 1.0
+    if (raw < min) raw = min;
+    if (raw > max) raw = max;
+
+    // Normaliza para 0.0–1.0
+    return (float)(raw - min) / (float)(max - min);
 }
