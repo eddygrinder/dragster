@@ -42,7 +42,7 @@ void motor_right_set(int duty);
 float calculaPosicao(float s1_norm, float s2_norm, float s3_norm, float s4_norm); // declaração
 float pos;
 float KP = 100.0f;
-int BASE_SPEED = 700;
+int BASE_SPEED = 1000;
 const int LIMITE_PRETO = 3000; // depende da calibração
 
 volatile float line_position = 0.0f;
@@ -51,6 +51,7 @@ typedef struct
 {
     float s1, s2, s3, s4;
 } SensorValues;
+
 volatile SensorValues sensors;
 
 volatile bool prova_terminada = false; // Flag de fim de prova
