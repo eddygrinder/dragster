@@ -17,8 +17,6 @@ cmake_install.cmake
 # VS Code
 # ----------------------------------
 .vscode/*
-!.vscode/settings.json         # mantêm se tiver configs importantes do projeto
-!.vscode/c_cpp_properties.json
 !.vscode/launch.json
 !.vscode/tasks.json
 
