@@ -1,32 +1,34 @@
 {
     "configurations": [
         {
-            "name": "Linux",
+            "name": "Windows",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/home/grinder/esp/v5.5.2/esp-idf/components/freertos/FreeRTOS-Kernel-SMP/include/freertos/**",
-                "/home/grinder/esp/v5.5.2/esp-idf/components/**",
-                "/home/grinder/esp/v5.5.2/esp-idf/components/esp_driver_gpio/include/**",
-                "/home/grinder/esp/v5.5.2/esp-idf/components/esp_driver_ledc/include/**",
-                "/home/grinder/esp/v5.5.2/esp-idf/components/esp_rom/include/**",
-                "/home/grinder/esp/v5.5.2/esp-idf/components/esp_common/include/**",
-                "/home/grinder/esp/v5.5.2/esp-idf/components/esp_system/include/**",
-                "/home/grinder/esp/v5.5.2/esp-idf/components/freertos/FreeRTOS-Kernel-SMP/include/**",
-                "/home/grinder/esp/v5.5.2/esp-idf/components/xtensa/include/**",
-                "/home/grinder/esp/v5.5.2/esp-idf/components/nvs_flash/include/**",
-                "/home/grinder/esp/v5.5.2/esp-idf/components/log/include/**",
-                "/home/grinder/esp/v5.5.2/esp-idf/components/esp_timer/include/**",
+                "C:/Users/ADMIN/esp/v5.5.1/esp-idf/components/freertos/FreeRTOS-Kernel-SMP/include/freertos/**",
+                "C:/Users/ADMIN/esp/v5.5.1/esp-idf/components/**",
+                "C:/Users/ADMIN/esp/v5.5.1/esp-idf/components/esp_driver_gpio/include/**",
+                "C:/Users/ADMIN/esp/v5.5.1/esp-idf/components/esp_driver_ledc/include/**",
+                "C:/Users/ADMIN/esp/v5.5.1/esp-idf/components/esp_rom/include/**",
+                "C:/Users/ADMIN/esp/v5.5.1/esp-idf/components/esp_common/include/**",
+                "C:/Users/ADMIN/esp/v5.5.1/esp-idf/components/esp_system/include/**",
+                "C:/Users/ADMIN/esp/v5.5.1/esp-idf/components/freertos/FreeRTOS-Kernel-SMP/include/**",
+                "C:/Users/ADMIN/esp/v5.5.1/esp-idf/components/freertos/FreeRTOS-Kernel-SMP/include/freertos/**",
+                "C:/Users/ADMIN/esp/v5.5.1/esp-idf/components/xtensa/include/**",
+                "C:/Users/ADMIN/esp/v5.5.1/esp-idf/components/nvs_flash/include/**",
+                "C:/Users/ADMIN/esp/v5.5.1/esp-idf/components/log/include/**",
+                "C:/Users/ADMIN/esp/v5.5.1/esp-idf/components/esp_timer/include/**",
                 "${workspaceFolder}/main",
                 "${workspaceFolder}/components/blinkt/include",
-                "${config:idf.espIdfPath}/components/**"
-
+                "C:/Users/ADMIN/esp/v5.5.1/esp-idf/components/**"
             ],
             "defines": [],
-             "compilerPath": "/home/grinder/.espressif/tools/xtensa-esp-elf/esp-14.2.0_20251107/xtensa-esp-elf/bin/xtensa-esp32-elf-gcc",
-
+            "compilerPath": "C:/Users/ADMIN/.espressif/tools/xtensa-esp-elf/esp-14.2.0_20241119/xtensa-esp-elf/bin/xtensa-esp32-elf-gcc",
             "cStandard": "c17",
             "cppStandard": "c++17",
-            "intelliSenseMode": "linux-gcc-x64"
+            "intelliSenseMode": "linux-gcc-x64",
+            "compileCommands": [
+                "${workspaceFolder}/build/compile_commands.json"
+            ]
         }
     ],
     "version": 4
