@@ -1,6 +1,6 @@
 /*
  * Automatically generated file. DO NOT EDIT.
- * Espressif IoT Development Framework (ESP-IDF) 5.5.1 Configuration Header
+ * Espressif IoT Development Framework (ESP-IDF) 5.5.2 Configuration Header
  */
 #pragma once
 #define CONFIG_SOC_CAPS_ECO_VER_MAX 301
@@ -90,7 +90,6 @@
 #define CONFIG_SOC_GPIO_VALID_DIGITAL_IO_PAD_MASK 0xEF0FEA
 #define CONFIG_SOC_GPIO_CLOCKOUT_BY_IO_MUX 1
 #define CONFIG_SOC_GPIO_CLOCKOUT_CHANNEL_NUM 3
-#define CONFIG_SOC_GPIO_SUPPORT_HOLD_IO_IN_DSLP 1
 #define CONFIG_SOC_I2C_NUM 2
 #define CONFIG_SOC_HP_I2C_NUM 2
 #define CONFIG_SOC_I2C_FIFO_LEN 32

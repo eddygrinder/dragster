@@ -1,9 +1,11 @@
 // blinkt.c
 #include "blinkt.h"
 #include "driver/gpio.h"
+#include "hal/gpio_types.h"
+#include "esp_rom_sys.h" // Para o ets_delay_us
 
-#define DAT GPIO_NUM_18
 #define CLK GPIO_NUM_23
+#define DAT GPIO_NUM_18
 #define NUM_LEDS 8
 
 typedef struct {
@@ -16,8 +18,10 @@ static led_t leds[NUM_LEDS];
 // --- Funções internas ---
 static void clock_pulse(void)
 {
-    gpio_set_level(CLK, 1);
     gpio_set_level(CLK, 0);
+    esp_rom_delay_us(1);  // espera ~1 microsegundo
+    gpio_set_level(CLK, 1);
+    esp_rom_delay_us(1);  // espera ~1 microsegundo
 }
 
 static void send_byte(uint8_t b)
@@ -31,21 +35,23 @@ static void send_byte(uint8_t b)
 
 static void show(void)
 {
-    // start frame (4 bytes de zero)
+    // Start Frame (32 zeros)
     for (int i = 0; i < 4; i++) send_byte(0x00);
 
-    // LEDs
+    // LEDs (Global + BGR)
     for (int i = 0; i < NUM_LEDS; i++) {
-        uint8_t gb = 0b11100000 | (uint8_t)(leds[i].brightness * 31.0f);
-        send_byte(gb);
+        // Brilho: 3 bits '1' seguidos de 5 bits de brilho (0-31)
+        uint8_t brightness_val = (uint8_t)(leds[i].brightness * 31.0f);
+        if (brightness_val > 31) brightness_val = 31;
+        
+        send_byte(0xE0 | brightness_val); // 0xE0 = 11100000
         send_byte(leds[i].b);
         send_byte(leds[i].g);
         send_byte(leds[i].r);
     }
 
-    // end frame: pelo menos (NUM_LEDS + 15)/16 bytes de 0xFF
-    int end_bytes = (NUM_LEDS + 15) / 16;
-    for (int i = 0; i < end_bytes; i++) send_byte(0xFF);
+    // End Frame (Pelo menos 32 bits de 1s para 8 LEDs)
+    for (int i = 0; i < 4; i++) send_byte(0xFF);
 }
 
 // --- Funções públicas ---
@@ -59,6 +65,10 @@ void blinkt_init(void)
         .intr_type = GPIO_INTR_DISABLE
     };
     gpio_config(&io_conf);
+
+    // Inicializar os níveis a 0
+    gpio_set_level(DAT, 0);
+    gpio_set_level(CLK, 0);
 
     // Limpar LEDs no arranque
     for (int i = 0; i < NUM_LEDS; i++) {
