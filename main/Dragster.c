@@ -4,13 +4,13 @@
 // Includes principais
 // ===============================
 #include <stdio.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "esp_adc/adc_oneshot.h"
 #include "driver/gpio.h"
 #include "driver/ledc.h"    // PWM control
 #include "hal/ledc_types.h" // Tipos LEDC
 #include "esp_rom_gpio.h"   // esp_rom_gpio_pad_select_gpio()
+#include "freertos/task.h"
+#include "freertos/FreeRTOS.h"
 #include "blinkt.h"
 
 // ===============================
@@ -24,15 +24,6 @@
 #define S4_CHANNEL ADC_CHANNEL_5 ///< Sensor direito (Castanho, GPIO33)
 
 adc_oneshot_unit_handle_t adc1_handle; ///< Handle do ADC
-
-// ===============================
-// Definições de variáveis
-// ===============================
-int s1_raw, s2_raw, s3_raw, s4_raw;
-#define min_s1 4095, #define max_s1 0
-#define min_s2 4095, #define max_s2 0;
-#define min_s3 4095, #define max_s3 0;
-#define min_s4 4095, #define max_s4 0;
 
 // ----- Motores -----
 #define AIN1 12
@@ -93,21 +84,23 @@ void motor_right_set(int duty);
 /// @brief Funções auxiliares
 float normalize(int raw, int min, int max);
 float calculaPosicao(float s1_norm, float s2_norm, float s3_norm, float s4_norm);
-void qtr_calibrate(void) void calib_button_pressed(void)
+void qtr_calibrate(int *s1_min, int *s1_max, int *s2_min, int *s2_max, int *s3_min, int *s3_max, int *s4_min, int *s4_max, uint32_t duration_ms);
+bool calib_button_pressed(void);
 
-    /// @brief Estados possíveis do robô durante a prova
-    ///
-    /// O robô passa por estes estados em sequência:
-    /// 1. Espera pelo botão de calibração
-    /// 2. Executa a calibração dos sensores
-    /// 3. Espera pelo sinal de arranque (LED)
-    /// 4. Executa o seguimento da linha
-    typedef enum {
-        WAIT_CALIB,  ///< Estado inicial: espera que o botão de calibração seja pressionado
-        CALIBRATING, ///< Estado de calibração: calibra sensores QTR-8C, acontece apenas uma vez
-        WAIT_START,  ///< Estado de espera pelo LED de arranque
-        RUN          ///< Estado de execução: segue a linha utilizando os valores calibrados
-    } robot_state_t;
+/// @brief Estados possíveis do robô durante a prova
+///
+/// O robô passa por estes estados em sequência:
+/// 1. Espera pelo botão de calibração
+/// 2. Executa a calibração dos sensores
+/// 3. Espera pelo sinal de arranque (LED)
+/// 4. Executa o seguimento da linha
+typedef enum
+{
+    WAIT_CALIB,  ///< Estado inicial: espera que o botão de calibração seja pressionado
+    CALIBRATING, ///< Estado de calibração: calibra sensores QTR-8C, acontece apenas uma vez
+    WAIT_START,  ///< Estado de espera pelo LED de arranque
+    RUN          ///< Estado de execução: segue a linha utilizando os valores calibrados
+} robot_state_t;
 
 // ===============================
 // Função principal
@@ -212,6 +205,13 @@ void app_main(void)
 // ================================
 void controlTask(void *pvParameters)
 {
+    
+    uint32_t duration_ms = 5000; ///< Duração da calibração em milissegundos
+    int s1_min = 4095, s1_max = 0;
+    int s2_min = 4095, s2_max = 0;
+    int s3_min = 4095, s3_max = 0;
+    int s4_min = 4095, s4_max = 0;
+
     /// @brief Espera até que o botão de calibração seja pressionado
     /*
     Liga robô
@@ -250,7 +250,7 @@ void controlTask(void *pvParameters)
         case CALIBRATING:
             motor_left_set(0);
             motor_right_set(0);
-            qtr_calibrate(); // corre UMA VEZ
+            qtr_calibrate(&s1_min, &s1_max, &s2_min, &s2_max, &s3_min, &s3_max, &s4_min, &s4_max, duration_ms); // corre UMA VEZ
             state = WAIT_START;
             break;
 
@@ -264,7 +264,7 @@ void controlTask(void *pvParameters)
             break;
 
         case RUN:
-            run_line_follower(); // loop contínuo
+            run_line_follower(s1_min, s1_max, s2_min, s2_max, s3_min, s3_max, s4_min, s4_max); // loop contínuo
             break;
         }
 
@@ -272,23 +272,11 @@ void controlTask(void *pvParameters)
     }
 }
 
-void run_line_follower(void)
+void run_line_follower(int s1_min, int s1_max, int s2_min, int s2_max, int s3_min, int s3_max, int s4_min, int s4_max)
 {
     int s1, s2, s3, s4;
-    float s1_norm, s2_norm, s3_norm, s4_norm; // Valores normalizados entre 0.0 e 1.0
-                                              // Valores da calibração
-
-#define S1_MIN 94
-#define S1_MAX 3046
-
-#define S2_MIN 101
-#define S2_MAX 3056
-
-#define S3_MIN 125
-#define S3_MAX 3250
-
-#define S4_MIN 130
-#define S4_MAX 3287
+    float line_position, s1_norm, s2_norm, s3_norm, s4_norm; // Valores normalizados entre 0.0 e 1.0
+    bool prova_terminada = false;
 
     while (1)
     {
@@ -298,16 +286,13 @@ void run_line_follower(void)
         adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &s3);
         adc_oneshot_read(adc1_handle, ADC_CHANNEL_5, &s4);
 
-        s1_norm = normalize(s1, S1_MIN, S1_MAX);
-        s2_norm = normalize(s2, S2_MIN, S2_MAX);
-        s3_norm = normalize(s3, S3_MIN, S3_MAX);
-        s4_norm = normalize(s4, S4_MIN, S4_MAX);
+        s1_norm = normalize(s1, s1_min, s1_max);
+        s2_norm = normalize(s2, s2_min, s2_max);
+        s3_norm = normalize(s3, s3_min, s3_max);
+        s4_norm = normalize(s4, s4_min, s4_max);
 
         line_position = calculaPosicao(s1_norm, s2_norm, s3_norm, s4_norm);
-
-        // Imprimir resultados
-        printf("pos:  %f S1: %.2f  S2: %.2f S3: %.2f   S4: %.2f \n", line_position, s1_norm, s2_norm, s3_norm, s4_norm);
-
+       
         if (s1 > LIMITE_PRETO && s4 > LIMITE_PRETO)
         {
             // Para os motores
@@ -380,8 +365,8 @@ void motor_right_set(int pwm)
     // STOP total → coast
     if (pwm == 0)
     {
-        gpio_set_level(AIN1, 0);
-        gpio_set_level(AIN2, 0);
+        gpio_set_level(BIN1, 0);
+        gpio_set_level(BIN2, 0);
         ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA, pwm);
         ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA);
         return;
@@ -431,9 +416,10 @@ float normalize(int raw, int min, int max)
     return (float)(raw - min) / (float)(max - min);
 }
 
-void qtr_calibrate(void)
+void qtr_calibrate(int *s1_min, int *s1_max, int *s2_min, int *s2_max, int *s3_min, int *s3_max, int *s4_min, int *s4_max, uint32_t duration_ms)
 {
 
+    int s1_raw, s2_raw, s3_raw, s4_raw;
     // Inicializa Blinkt!
     blinkt_init();  // Inicializa os pinos
     blinkt_white(); // Acende todos os LEDs a branco
@@ -442,42 +428,41 @@ void qtr_calibrate(void)
     printf("Move o Dragster lentamente sobre a linha e o fundo...\n");
 
     uint32_t inicio = xTaskGetTickCount();
-    const int DURACAO_CALIB_MS = 10000; // 3 segundos
 
     // -----------------------
     // CICLO DE CALIBRAÇÃO
     // -----------------------
-    while (xTaskGetTickCount() - inicio < pdMS_TO_TICKS(DURACAO_CALIB_MS))
+    while (xTaskGetTickCount() - inicio < pdMS_TO_TICKS(duration_ms))
     {
         adc_oneshot_read(adc1_handle, S1_CHANNEL, &s1_raw);
         adc_oneshot_read(adc1_handle, S2_CHANNEL, &s2_raw);
         adc_oneshot_read(adc1_handle, S3_CHANNEL, &s3_raw);
         adc_oneshot_read(adc1_handle, S4_CHANNEL, &s4_raw);
 
-        if (s1_raw < min_s1)
-            min_s1 = s1_raw;
-        if (s1_raw > max_s1)
-            max_s1 = s1_raw;
+        if (s1_raw < *s1_min)
+            *s1_min = s1_raw;
+        if (s1_raw > *s1_max)
+            *s1_max = s1_raw;
 
-        if (s2_raw < min_s2)
-            min_s2 = s2_raw;
-        if (s2_raw > max_s2)
-            max_s2 = s2_raw;
+        if (s2_raw < *s2_min)
+            *s2_min = s2_raw;
+        if (s2_raw > *s2_max)
+            *s2_max = s2_raw;
 
-        if (s3_raw < min_s3)
-            min_s3 = s3_raw;
-        if (s3_raw > max_s3)
-            max_s3 = s3_raw;
+        if (s3_raw < *s3_min)
+            *s3_min = s3_raw;
+        if (s3_raw > *s3_max)
+            *s3_max = s3_raw;
 
-        if (s4_raw < min_s4)
-            min_s4 = s4_raw;
-        if (s4_raw > max_s4)
-            max_s4 = s4_raw;
+        if (s4_raw < *s4_min)
+            *s4_min = s4_raw;
+        if (s4_raw > *s4_max)
+            *s4_max = s4_raw;
 
         printf("S1 raw=%4d min=%4d max=%4d | S2 raw=%4d min=%4d max=%4d\n",
-               s1_raw, min_s1, max_s1, s2_raw, min_s2, max_s2);
+               s1_raw, *s1_min, *s1_max, s2_raw, *s2_min, *s2_max);
         printf("S3 raw=%4d min=%4d max=%4d | S4 raw=%4d min=%4d max=%4d\n\n",
-               s3_raw, min_s3, max_s3, s4_raw, min_s4, max_s4);
+               s3_raw, *s3_min, *s3_max, s4_raw, *s4_min, *s4_max);
 
         vTaskDelay(pdMS_TO_TICKS(100));
     }
@@ -486,10 +471,10 @@ void qtr_calibrate(void)
     // RESULTADOS FINAIS
     // -----------------------
     printf("\n=== RESULTADOS FINAIS DA CALIBRACAO ===\n");
-    printf("S1: min=%4d  max=%4d\n", min_s1, max_s1);
-    printf("S2: min=%4d  max=%4d\n", min_s2, max_s2);
-    printf("S3: min=%4d  max=%4d\n", min_s3, max_s3);
-    printf("S4: min=%4d  max=%4d\n", min_s4, max_s4);
+    printf("S1: min=%4d  max=%4d\n", *s1_min, *s1_max);
+    printf("S2: min=%4d  max=%4d\n", *s2_min, *s2_max);
+    printf("S3: min=%4d  max=%4d\n", *s3_min, *s3_max);
+    printf("S4: min=%4d  max=%4d\n", *s4_min, *s4_max);
     printf("=======================================\n");
 
     printf("Calibração concluída! Reinicia para correr o programa.\n");
