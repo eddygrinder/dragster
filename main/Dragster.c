@@ -1,80 +1,131 @@
+#pragma once // Evita múltiplas inclusões se este for transformado em header
+
+// ===============================
+// Includes principais
+// ===============================
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_adc/adc_oneshot.h"
 #include "driver/gpio.h"
-#include "driver/ledc.h"  // For PWM control
-#include "hal/ledc_types.h" // Adicione esta linha
-#include "esp_rom_gpio.h" // Para esp_rom_gpio_pad_select_gpio()
+#include "driver/ledc.h"    // PWM control
+#include "hal/ledc_types.h" // Tipos LEDC
+#include "esp_rom_gpio.h"   // esp_rom_gpio_pad_select_gpio()
 #include "blinkt.h"
 
 // ===============================
-// Definições copiadas do ficheiro de calibração
+// Definições de hardware
 // ===============================
 
+// ----- Sensores QTR-8C -----
+#define S1_CHANNEL ADC_CHANNEL_6 ///< Sensor esquerdo (Amarelo, GPIO34)
+#define S2_CHANNEL ADC_CHANNEL_7 ///< Sensor central esquerdo (Castanho, GPIO35)
+#define S3_CHANNEL ADC_CHANNEL_3 ///< Sensor central direito (Cinzento, GPIO39)
+#define S4_CHANNEL ADC_CHANNEL_5 ///< Sensor direito (Castanho, GPIO33)
 
-// Handles do ADC
-adc_oneshot_unit_handle_t adc1_handle;
+adc_oneshot_unit_handle_t adc1_handle; ///< Handle do ADC
 
-// Motor Pin definitions
+// ===============================
+// Definições de variáveis
+// ===============================
+int s1_raw, s2_raw, s3_raw, s4_raw;
+#define min_s1 4095, #define max_s1 0
+#define min_s2 4095, #define max_s2 0;
+#define min_s3 4095, #define max_s3 0;
+#define min_s4 4095, #define max_s4 0;
+
+// ----- Motores -----
 #define AIN1 12
-#define BIN1 14
 #define AIN2 13
-#define BIN2 27
 #define PWM1 25
+#define BIN1 14
+#define BIN2 27
 #define PWM2 26
 
-#define BTN_CAL XX // Botão de calibração
-
-#define MOTOR_PWM_FREQ 20000 // Frequency in Hz for PWM
+#define MOTOR_PWM_FREQ 20000 ///< Frequência PWM (Hz)
 #define MOTOR_PWM_MODE LEDC_LOW_SPEED_MODE
 #define MOTOR_PWM_TIMER LEDC_TIMER_0
-#define MOTOR_PWM_RES LEDC_TIMER_10_BIT // PWM resolution (10-bit)
-#define MAX_DUTY_CYCLE 1023             // Maximum duty cycle for 10-bit resolution
+#define MOTOR_PWM_RES LEDC_TIMER_10_BIT      ///< Resolução PWM (10-bit)
+#define MAX_DUTY_CYCLE 1023                  ///< Ciclo máximo para 10-bit
+#define MOTOR_PWM_CHANNEL_ESQ LEDC_CHANNEL_0 ///< Canal PWM do motor esquerdo
+#define MOTOR_PWM_CHANNEL_DTA LEDC_CHANNEL_1 ///< Canal PWM do motor direito
 
-// Canal ADC dos sensores
-#define S1_CHANNEL ADC_CHANNEL_6 //Amarelo,  S1 - GPIO34 -> Esquerda
-#define S2_CHANNEL ADC_CHANNEL_7 //Castanho, S2 - GPIO35
-#define S3_CHANNEL ADC_CHANNEL_3 //Cinzento, S3 - GPIO39
-#define S4_CHANNEL ADC_CHANNEL_5 //Castanho, S4 - GPIO33 -> Direita
+// ----- Botões -----
+#define BTN_CAL XX ///< GPIO do botão de calibração (substituir XX pelo GPIO real)
 
-// Motor ESQ
-#define MOTOR_PWM_CHANNEL_ESQ LEDC_CHANNEL_0
+// ===============================
+// Configurações de prova / PID
+// ===============================
+float KP = 450.0f;             ///< Ganho proporcional
+int BASE_SPEED = 1500;         ///< Velocidade base dos motores
+const int LIMITE_PRETO = 3000; ///< Limite de deteção de preto (deve vir da calibração)
 
-// Motor DTA
-#define MOTOR_PWM_CHANNEL_DTA LEDC_CHANNEL_1
+#define linelost_threshold 0.05f ///< Linha considerada perdida se soma dos sensores normalizados < 0.05
 
+// ===============================
+// Estruturas de dados
+// ===============================
+typedef struct
+{
+    float s1, s2, s3, s4; ///< Valores normalizados dos sensores
+} SensorValues;
+
+volatile SensorValues sensors;         ///< Valores atuais dos sensores
+volatile float line_position = 0.0f;   ///< Posição da linha calculada
+volatile bool prova_terminada = false; ///< Flag de fim de prova
+
+// ===============================
+// Protótipos de funções
+// ===============================
+
+/// @brief Task principal de controlo do robô
 void controlTask(void *pvParameters);
-void motorControl(float line_position);
-float normalize(int raw, int min, int max);
 
+/**
+ * @brief Ajusta os motores esquerdo e direito com base na posição da linha.
+ *
+ * @param line_position Posição calculada da linha (-1.0 à esquerda, +1.0 à direita)
+ */
+void motorControl(float line_position);
 void motor_left_set(int duty);
 void motor_right_set(int duty);
 
-float calculaPosicao(float s1_norm, float s2_norm, float s3_norm, float s4_norm); // declaração
-float pos;
-float KP = 450.0f;
-int BASE_SPEED = 1500;
-const int LIMITE_PRETO = 3000; // depende da calibração
+/// @brief Funções auxiliares
+float normalize(int raw, int min, int max);
+float calculaPosicao(float s1_norm, float s2_norm, float s3_norm, float s4_norm);
+void qtr_calibrate(void) void calib_button_pressed(void)
 
-volatile float line_position = 0.0f;
-#define linelost_threshold 0.05f  // linha perdida se soma dos sensores normalizados < 0.05
-typedef struct
-{
-    float s1, s2, s3, s4;
-} SensorValues;
+    /// @brief Estados possíveis do robô durante a prova
+    ///
+    /// O robô passa por estes estados em sequência:
+    /// 1. Espera pelo botão de calibração
+    /// 2. Executa a calibração dos sensores
+    /// 3. Espera pelo sinal de arranque (LED)
+    /// 4. Executa o seguimento da linha
+    typedef enum {
+        WAIT_CALIB,  ///< Estado inicial: espera que o botão de calibração seja pressionado
+        CALIBRATING, ///< Estado de calibração: calibra sensores QTR-8C, acontece apenas uma vez
+        WAIT_START,  ///< Estado de espera pelo LED de arranque
+        RUN          ///< Estado de execução: segue a linha utilizando os valores calibrados
+    } robot_state_t;
 
-volatile SensorValues sensors;
+// ===============================
+// Função principal
+// ===============================
 
-volatile bool prova_terminada = false; // Flag de fim de prova
-
+/**
+ * @brief Inicializa hardware, ADC, PWM e cria a task de controlo
+ */
 void app_main(void)
 {
-    // ================================
-    // Configurar os GPIOs de direção como saída
-    // ================================
+    // -------------------------------
+    // 1) Configuração dos GPIOs de direção
+    // -------------------------------
 
-    // Motor A direction
+    esp_rom_gpio_pad_select_gpio(BTN_CAL);
+    gpio_set_direction(BTN_CAL, GPIO_MODE_INPUT);
+
+    // Motor A (esquerdo)
     esp_rom_gpio_pad_select_gpio(AIN1);
     gpio_set_direction(AIN1, GPIO_MODE_OUTPUT);
     esp_rom_gpio_pad_select_gpio(AIN2);
@@ -82,7 +133,7 @@ void app_main(void)
     esp_rom_gpio_pad_select_gpio(PWM1);
     gpio_set_direction(PWM1, GPIO_MODE_OUTPUT);
 
-    // Motor B direction
+    // Motor B (direito)
     esp_rom_gpio_pad_select_gpio(BIN1);
     gpio_set_direction(BIN1, GPIO_MODE_OUTPUT);
     esp_rom_gpio_pad_select_gpio(BIN2);
@@ -90,11 +141,11 @@ void app_main(void)
     esp_rom_gpio_pad_select_gpio(PWM2);
     gpio_set_direction(PWM2, GPIO_MODE_OUTPUT);
 
-    // ================================
-    // Configurar PWM
-    // ================================
+    // -------------------------------
+    // 2) Configuração do PWM (LEDC)
+    // -------------------------------
 
-    // Configure LEDC timer
+    // Timer PWM
     ledc_timer_config_t pwm_timer = {
         .speed_mode = MOTOR_PWM_MODE,
         .duty_resolution = MOTOR_PWM_RES,
@@ -103,7 +154,7 @@ void app_main(void)
         .clk_cfg = LEDC_AUTO_CLK};
     ledc_timer_config(&pwm_timer);
 
-    // Configure Motor ESQuerdo
+    // Canal PWM motor esquerdo
     ledc_channel_config_t motorESQ = {
         .gpio_num = PWM1,
         .speed_mode = MOTOR_PWM_MODE,
@@ -113,7 +164,7 @@ void app_main(void)
         .hpoint = 0};
     ledc_channel_config(&motorESQ);
 
-    // Configure Motor Direito
+    // Canal PWM motor direito
     ledc_channel_config_t motorDTA = {
         .gpio_num = PWM2,
         .speed_mode = MOTOR_PWM_MODE,
@@ -123,29 +174,37 @@ void app_main(void)
         .hpoint = 0};
     ledc_channel_config(&motorDTA);
 
-    // ================================
-    // 1) Inicializar o ADC1
-    // ================================
+    // -------------------------------
+    // 3) Inicializar ADC
+    // -------------------------------
     adc_oneshot_unit_init_cfg_t init_config = {
         .unit_id = ADC_UNIT_1};
     adc_oneshot_new_unit(&init_config, &adc1_handle);
 
-    // ================================
-    // 2) Configurar cada canal (sensor)
-    // ================================
-    adc_oneshot_chan_cfg_t config = {
-        .bitwidth = ADC_BITWIDTH_DEFAULT, // Normalmente 12 bits
-        .atten = ADC_ATTEN_DB_12          // Para ler até ~3.3V
+    // -------------------------------
+    // 4) Configurar cada canal ADC (sensores)
+    // -------------------------------
+    adc_oneshot_chan_cfg_t adc_config = {
+        .bitwidth = ADC_BITWIDTH_DEFAULT, // normalmente 12 bits
+        .atten = ADC_ATTEN_DB_12          // para ler até ~3.3V
     };
-    adc_oneshot_config_channel(adc1_handle, S1_CHANNEL, &config); // Sensor esq - verde/laranja
-    adc_oneshot_config_channel(adc1_handle, S2_CHANNEL, &config); // Sensor central esq branco/cinzento
-    adc_oneshot_config_channel(adc1_handle, S3_CHANNEL, &config); // Sensor central dir vermelho/castanho
-    adc_oneshot_config_channel(adc1_handle, S4_CHANNEL, &config); // Sensor dir verde/amarelo
-    
-    // ================================
-    // 3) Criar a tarefa que lê os sensores
-    // ================================
-    xTaskCreate(controlTask, "Control Task", 2048, NULL, 1, NULL);
+
+    adc_oneshot_config_channel(adc1_handle, S1_CHANNEL, &adc_config);
+    adc_oneshot_config_channel(adc1_handle, S2_CHANNEL, &adc_config);
+    adc_oneshot_config_channel(adc1_handle, S3_CHANNEL, &adc_config);
+    adc_oneshot_config_channel(adc1_handle, S4_CHANNEL, &adc_config);
+
+    // -------------------------------
+    // 5) Criar a task principal de controlo
+    // -------------------------------
+    xTaskCreate(
+        controlTask,    ///< Função da task
+        "Control Task", ///< Nome da task
+        2048,           ///< Stack size
+        NULL,           ///< Parâmetros
+        1,              ///< Prioridade
+        NULL            ///< Handle da task (não usado)
+    );
 }
 
 // ================================
@@ -153,27 +212,83 @@ void app_main(void)
 // ================================
 void controlTask(void *pvParameters)
 {
+    /// @brief Espera até que o botão de calibração seja pressionado
+    /*
+    Liga robô
+        ↓
+    WAIT_CALIB   → botão pressionado
+        ↓
+    CALIBRATING  → termina
+        ↓
+    WAIT_START   → LED OFF
+        ↓
+    WAIT_START   → LED ON  ← AQUI
+        ↓
+    RUN          → segue linha até ao fim
+
+    */
+
+    robot_state_t state = WAIT_CALIB;
+
+    // Assegura motores parados no início
+    motor_left_set(0);
+    motor_right_set(0);
+
+    while (1)
+    {
+        switch (state)
+        {
+        case WAIT_CALIB:
+            motor_left_set(0);
+            motor_right_set(0);
+            if (calib_button_pressed())
+            {
+                state = CALIBRATING;
+            }
+            break;
+
+        case CALIBRATING:
+            motor_left_set(0);
+            motor_right_set(0);
+            qtr_calibrate(); // corre UMA VEZ
+            state = WAIT_START;
+            break;
+
+        case WAIT_START:
+            motor_left_set(0);
+            motor_right_set(0);
+            if (start_led_detected())
+            {
+                state = RUN;
+            }
+            break;
+
+        case RUN:
+            run_line_follower(); // loop contínuo
+            break;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(5));
+    }
+}
+
+void run_line_follower(void)
+{
     int s1, s2, s3, s4;
     float s1_norm, s2_norm, s3_norm, s4_norm; // Valores normalizados entre 0.0 e 1.0
-    // Valores da calibração
+                                              // Valores da calibração
 
-    #define S1_MIN 94
-    #define S1_MAX 3046
+#define S1_MIN 94
+#define S1_MAX 3046
 
-    #define S2_MIN 101
-    #define S2_MAX 3056
+#define S2_MIN 101
+#define S2_MAX 3056
 
-    #define S3_MIN 125
-    #define S3_MAX 3250
+#define S3_MIN 125
+#define S3_MAX 3250
 
-    #define S4_MIN 130
-    #define S4_MAX 3287
-
-    // Espera botão de calibração
-    wait_for_calibration_button();
-
-     // Calibra
-    qtr_calibrate();
+#define S4_MIN 130
+#define S4_MAX 3287
 
     while (1)
     {
@@ -213,10 +328,6 @@ void controlTask(void *pvParameters)
     }
 }
 
-// ================================
-// TAREFA QUE controla os motores
-// ================================
-
 void motorControl(float line_position)
 {
     float erro = 0.0f - line_position; // queremos linha centrada = 0
@@ -228,10 +339,6 @@ void motorControl(float line_position)
     motor_left_set(left_pwm);
     motor_right_set(right_pwm);
 }
-
-// ================================
-// TAREFA QUE pára os motores
-// ================================
 
 void motor_left_set(int pwm)
 {
@@ -315,8 +422,10 @@ float calculaPosicao(float s1, float s2, float s3, float s4)
 float normalize(int raw, int min, int max)
 {
     // Limita o valor ao intervalo calibrado - devolve um valor entre 0.0 e 1.0
-    if (raw < min) raw = min;
-    if (raw > max) raw = max;
+    if (raw < min)
+        raw = min;
+    if (raw > max)
+        raw = max;
 
     // Normaliza para 0.0–1.0
     return (float)(raw - min) / (float)(max - min);
@@ -325,16 +434,9 @@ float normalize(int raw, int min, int max)
 void qtr_calibrate(void)
 {
 
-     // Inicializa Blinkt!
-    blinkt_init();      // Inicializa os pinos
-    blinkt_white();     // Acende todos os LEDs a branco
- 
-    // Variáveis
-    int s1_raw, s2_raw, s3_raw, s4_raw;
-    int min_s1 = 4095, max_s1 = 0;
-    int min_s2 = 4095, max_s2 = 0;
-    int min_s3 = 4095, max_s3 = 0;
-    int min_s4 = 4095, max_s4 = 0;
+    // Inicializa Blinkt!
+    blinkt_init();  // Inicializa os pinos
+    blinkt_white(); // Acende todos os LEDs a branco
 
     printf("=== CALIBRACAO SENSORES ===\n");
     printf("Move o Dragster lentamente sobre a linha e o fundo...\n");
@@ -397,12 +499,12 @@ void qtr_calibrate(void)
         vTaskDelay(pdMS_TO_TICKS(1000));
 }
 
-// -----------------------
-// Botão de calibração
-// -----------------------
-static void wait_for_calibration_button(void)
+/**
+ * @brief Verifica se o botão de calibração foi pressionado
+ *
+ * @return true se pressionado, false caso contrário
+ */
+bool calib_button_pressed(void)
 {
-    while (gpio_get_level(BTN_CAL) == 1) {
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
+    return (gpio_get_level(BTN_CAL) == 1); // Retorna true quando pressionado
 }
