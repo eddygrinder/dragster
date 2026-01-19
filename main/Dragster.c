@@ -1,16 +1,14 @@
-#pragma once // Evita múltiplas inclusões se este for transformado em header
-
 // ===============================
 // Includes principais
 // ===============================
 #include <stdio.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_adc/adc_oneshot.h"
 #include "driver/gpio.h"
 #include "driver/ledc.h"    // PWM control
 #include "hal/ledc_types.h" // Tipos LEDC
 #include "esp_rom_gpio.h"   // esp_rom_gpio_pad_select_gpio()
-#include "freertos/task.h"
-#include "freertos/FreeRTOS.h"
 #include "blinkt.h"
 
 // ===============================
@@ -42,16 +40,7 @@ adc_oneshot_unit_handle_t adc1_handle; ///< Handle do ADC
 #define MOTOR_PWM_CHANNEL_DTA LEDC_CHANNEL_1 ///< Canal PWM do motor direito
 
 // ----- Botões -----
-#define BTN_CAL XX ///< GPIO do botão de calibração (substituir XX pelo GPIO real)
-
-// ===============================
-// Configurações de prova / PID
-// ===============================
-float KP = 450.0f;             ///< Ganho proporcional
-int BASE_SPEED = 1500;         ///< Velocidade base dos motores
-const int LIMITE_PRETO = 3000; ///< Limite de deteção de preto (deve vir da calibração)
-
-#define linelost_threshold 0.05f ///< Linha considerada perdida se soma dos sensores normalizados < 0.05
+#define BTN_CAL 22 ///< GPIO do botão de calibração (substituir XX pelo GPIO real)
 
 // ===============================
 // Estruturas de dados
@@ -62,8 +51,7 @@ typedef struct
 } SensorValues;
 
 volatile SensorValues sensors;         ///< Valores atuais dos sensores
-volatile float line_position = 0.0f;   ///< Posição da linha calculada
-volatile bool prova_terminada = false; ///< Flag de fim de prova
+
 
 // ===============================
 // Protótipos de funções
@@ -71,6 +59,8 @@ volatile bool prova_terminada = false; ///< Flag de fim de prova
 
 /// @brief Task principal de controlo do robô
 void controlTask(void *pvParameters);
+void run_line_follower(int s1_min, int s1_max, int s2_min, int s2_max, int s3_min, int s3_max, int s4_min, int s4_max); // loop contínuo
+
 
 /**
  * @brief Ajusta os motores esquerdo e direito com base na posição da linha.
@@ -86,6 +76,7 @@ float normalize(int raw, int min, int max);
 float calculaPosicao(float s1_norm, float s2_norm, float s3_norm, float s4_norm);
 void qtr_calibrate(int *s1_min, int *s1_max, int *s2_min, int *s2_max, int *s3_min, int *s3_max, int *s4_min, int *s4_max, uint32_t duration_ms);
 bool calib_button_pressed(void);
+bool start_led_detected(void);
 
 /// @brief Estados possíveis do robô durante a prova
 ///
@@ -275,9 +266,9 @@ void controlTask(void *pvParameters)
 void run_line_follower(int s1_min, int s1_max, int s2_min, int s2_max, int s3_min, int s3_max, int s4_min, int s4_max)
 {
     int s1, s2, s3, s4;
-    float line_position, s1_norm, s2_norm, s3_norm, s4_norm; // Valores normalizados entre 0.0 e 1.0
-    bool prova_terminada = false;
-
+    const int LIMITE_PRETO = 3000; ///< Limite de deteção de preto (deve vir da calibração)
+    float line_position = 0.0f;   ///< Posição da linha calculada
+    float s1_norm, s2_norm, s3_norm, s4_norm; // Valores normalizados entre 0.0 e 1.0
     while (1)
     {
         // Ler valor de cada canal
@@ -315,6 +306,9 @@ void run_line_follower(int s1_min, int s1_max, int s2_min, int s2_max, int s3_mi
 
 void motorControl(float line_position)
 {
+    
+    float KP = 450.0f;             ///< Ganho proporcional
+    int BASE_SPEED = 1500;         ///< Velocidade base dos motores
     float erro = 0.0f - line_position; // queremos linha centrada = 0
     float correcao = KP * erro;
 
@@ -396,6 +390,7 @@ void motor_right_set(int pwm)
 
 float calculaPosicao(float s1, float s2, float s3, float s4)
 {
+    #define linelost_threshold 0.05f ///< Linha considerada perdida se soma dos sensores normalizados < 0.05
     float soma = s1 + s2 + s3 + s4;
     if (soma < linelost_threshold)
         return 0; // linha perdida
@@ -492,4 +487,9 @@ void qtr_calibrate(int *s1_min, int *s1_max, int *s2_min, int *s2_max, int *s3_m
 bool calib_button_pressed(void)
 {
     return (gpio_get_level(BTN_CAL) == 1); // Retorna true quando pressionado
+}
+
+bool start_led_detected(void)
+{
+    return false; // ou true, conforme precisares nos testes
 }
