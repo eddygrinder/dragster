@@ -40,7 +40,8 @@ adc_oneshot_unit_handle_t adc1_handle; ///< Handle do ADC
 #define MOTOR_PWM_CHANNEL_DTA LEDC_CHANNEL_1 ///< Canal PWM do motor direito
 
 // ----- Botões -----
-#define BTN_CAL 22 ///< GPIO do botão de calibração (substituir XX pelo GPIO real)
+#define BTN_CAL 17 ///< GPIO do botão de calibração (substituir XX pelo GPIO real)
+#define LED_CAL 16 ///< GPIO do LED de calibração (substituir XX pelo GPIO real)
 
 // ===============================
 // Estruturas de dados
@@ -50,8 +51,7 @@ typedef struct
     float s1, s2, s3, s4; ///< Valores normalizados dos sensores
 } SensorValues;
 
-volatile SensorValues sensors;         ///< Valores atuais dos sensores
-
+volatile SensorValues sensors; ///< Valores atuais dos sensores
 
 // ===============================
 // Protótipos de funções
@@ -60,7 +60,6 @@ volatile SensorValues sensors;         ///< Valores atuais dos sensores
 /// @brief Task principal de controlo do robô
 void controlTask(void *pvParameters);
 void run_line_follower(int s1_min, int s1_max, int s2_min, int s2_max, int s3_min, int s3_max, int s4_min, int s4_max); // loop contínuo
-
 
 /**
  * @brief Ajusta os motores esquerdo e direito com base na posição da linha.
@@ -108,6 +107,10 @@ void app_main(void)
 
     esp_rom_gpio_pad_select_gpio(BTN_CAL);
     gpio_set_direction(BTN_CAL, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(BTN_CAL, GPIO_PULLDOWN_ONLY);
+
+    esp_rom_gpio_pad_select_gpio(LED_CAL);
+    gpio_set_direction(LED_CAL, GPIO_MODE_OUTPUT);
 
     // Motor A (esquerdo)
     esp_rom_gpio_pad_select_gpio(AIN1);
@@ -196,7 +199,7 @@ void app_main(void)
 // ================================
 void controlTask(void *pvParameters)
 {
-    
+
     uint32_t duration_ms = 5000; ///< Duração da calibração em milissegundos
     int s1_min = 4095, s1_max = 0;
     int s2_min = 4095, s2_max = 0;
@@ -250,6 +253,9 @@ void controlTask(void *pvParameters)
             motor_right_set(0);
             if (start_led_detected())
             {
+                gpio_set_level(LED_CAL, 0); // Apaga LED de calibração
+                vTaskDelay(pdMS_TO_TICKS(2000)); // Pequena espera antes de arrancar
+
                 state = RUN;
             }
             break;
@@ -259,16 +265,22 @@ void controlTask(void *pvParameters)
             break;
         }
 
-        vTaskDelay(pdMS_TO_TICKS(5));
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
 
 void run_line_follower(int s1_min, int s1_max, int s2_min, int s2_max, int s3_min, int s3_max, int s4_min, int s4_max)
 {
     int s1, s2, s3, s4;
-    const int LIMITE_PRETO = 3000; ///< Limite de deteção de preto (deve vir da calibração)
-    float line_position = 0.0f;   ///< Posição da linha calculada
+    float line_position = 0.0f;               ///< Posição da linha calculada
     float s1_norm, s2_norm, s3_norm, s4_norm; // Valores normalizados entre 0.0 e 1.0
+
+    // Depois do loop de calibração, ao calcular resultados finais
+    int LIMITE_PRETO_S1 = s1_min + ((s1_max - s1_min) * 3 / 4); // 75% entre min e max
+    int LIMITE_PRETO_S4 = s4_min + ((s4_max - s4_min) * 3 / 4); // para o sensor da ponta direita
+
+    //printf("LIMITE_PRETO S1 = %d, S4 = %d\n", LIMITE_PRETO_S1, LIMITE_PRETO_S4);
+
     while (1)
     {
         // Ler valor de cada canal
@@ -283,8 +295,8 @@ void run_line_follower(int s1_min, int s1_max, int s2_min, int s2_max, int s3_mi
         s4_norm = normalize(s4, s4_min, s4_max);
 
         line_position = calculaPosicao(s1_norm, s2_norm, s3_norm, s4_norm);
-       
-        if (s1 > LIMITE_PRETO && s4 > LIMITE_PRETO)
+
+        if (s1 > LIMITE_PRETO_S1 && s4 > LIMITE_PRETO_S4)
         {
             // Para os motores
             motor_left_set(0);
@@ -300,15 +312,13 @@ void run_line_follower(int s1_min, int s1_max, int s2_min, int s2_max, int s3_mi
         motorControl(line_position);
 
         // Esperar 100 ms antes da próxima leitura
-        vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
 }
 
 void motorControl(float line_position)
 {
-    
-    float KP = 450.0f;             ///< Ganho proporcional
-    int BASE_SPEED = 1500;         ///< Velocidade base dos motores
+
     float erro = 0.0f - line_position; // queremos linha centrada = 0
     float correcao = KP * erro;
 
@@ -390,7 +400,7 @@ void motor_right_set(int pwm)
 
 float calculaPosicao(float s1, float s2, float s3, float s4)
 {
-    #define linelost_threshold 0.05f ///< Linha considerada perdida se soma dos sensores normalizados < 0.05
+#define linelost_threshold 0.05f ///< Linha considerada perdida se soma dos sensores normalizados < 0.05
     float soma = s1 + s2 + s3 + s4;
     if (soma < linelost_threshold)
         return 0; // linha perdida
@@ -418,6 +428,8 @@ void qtr_calibrate(int *s1_min, int *s1_max, int *s2_min, int *s2_max, int *s3_m
     // Inicializa Blinkt!
     blinkt_init();  // Inicializa os pinos
     blinkt_white(); // Acende todos os LEDs a branco
+
+    gpio_set_level(LED_CAL, 1); // Acende LED de calibração
 
     printf("=== CALIBRACAO SENSORES ===\n");
     printf("Move o Dragster lentamente sobre a linha e o fundo...\n");
@@ -475,8 +487,8 @@ void qtr_calibrate(int *s1_min, int *s1_max, int *s2_min, int *s2_max, int *s3_m
     printf("Calibração concluída! Reinicia para correr o programa.\n");
 
     // Impede que continue (opcional)
-    while (1)
-        vTaskDelay(pdMS_TO_TICKS(1000));
+    // while (1)
+    //    vTaskDelay(pdMS_TO_TICKS(1000));
 }
 
 /**
@@ -486,10 +498,11 @@ void qtr_calibrate(int *s1_min, int *s1_max, int *s2_min, int *s2_max, int *s3_m
  */
 bool calib_button_pressed(void)
 {
+    printf("gpio_get_level(BTN_CAL) = %d\n", gpio_get_level(BTN_CAL));
     return (gpio_get_level(BTN_CAL) == 1); // Retorna true quando pressionado
 }
 
 bool start_led_detected(void)
 {
-    return false; // ou true, conforme precisares nos testes
+    return true; // ou true, conforme precisares nos testes
 }

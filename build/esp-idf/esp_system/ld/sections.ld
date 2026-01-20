@@ -1,6 +1,6 @@
 /* Automatically generated file; DO NOT EDIT */
 /* Espressif IoT Development Framework Linker Script */
-/* Generated from: C:\Users\edumm\Documents\GitHub\dragster\build\esp-idf\esp_system\ld\sections.ld.in */
+/* Generated from: C:\Users\ADMIN\Documents\GitHub\dragster\build\esp-idf\esp_system\ld\sections.ld.in */
 
 /*
 
