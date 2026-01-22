@@ -1,20 +1,30 @@
 #pragma once
+#include <stdint.h>
+#include <stdbool.h>
+
+// =======================================================
+//                     PARÂMETROS DE AFINAÇÃO
+// =======================================================
 
 // ===============================
-// Afinação do seguidor de linha
+// PID (ajustável durante testes)
 // ===============================
+float KP = 125.0f;       ///< Ganho proporcional do controlador
 
-// ---------- PID ----------
-float KP = 120.0f; ///< Ganho proporcional
+// ===============================
+// Motores (ajustável durante testes)
+// ===============================
+int BASE_SPEED = 950;    ///< Velocidade base dos motores (0 a 1023)
 
-// ---------- Motores ----------
-#define BASE_SPEED 950;      ///< Velocidade base dos motores
-//#define MAX_CORRECTION 800 // limite de correção do PID
+// ===============================
+// Sensores (constantes)
+// ===============================
+const int MAX_DUTY_CYCLE = 1023;   ///< Valor máximo do PWM (10-bit)
+const int PRETO_PERCENT = 75;      ///< Percentagem entre min e max para considerar "preto"
+const float LINELOST_THRESHOLD = 0.05f; ///< Linha considerada perdida se soma dos sensores normalizados < 0.05
 
-// ---------- Sensores ----------
-#define PRETO_PERCENT 75         // percentagem entre min e max
-#define LINELOST_THRESHOLD 0.05f // linha perdida
-
-// ---------- Timing ----------
-#define LOOP_DELAY_MS 1 // delay do loop principal
-#define CALIBRATION_TIME_MS 5000
+// ===============================
+// Timing / Loops (constantes)
+// ===============================
+const int LOOP_DELAY_MS = 1;            ///< Delay do loop principal em ms
+const uint32_t CALIBRATION_TIME_MS = 5000; ///< Duração da calibração em ms

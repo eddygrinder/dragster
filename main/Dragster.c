@@ -2,6 +2,7 @@
 // Includes principais
 // ===============================
 #include <stdio.h>
+#include "tuning.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_adc/adc_oneshot.h"
@@ -200,7 +201,7 @@ void app_main(void)
 void controlTask(void *pvParameters)
 {
 
-    uint32_t duration_ms = 5000; ///< Duração da calibração em milissegundos
+    uint32_t duration_ms = CALIBRATION_TIME_MS; ///< Duração da calibração em milissegundos
     int s1_min = 4095, s1_max = 0;
     int s2_min = 4095, s2_max = 0;
     int s3_min = 4095, s3_max = 0;
@@ -276,8 +277,8 @@ void run_line_follower(int s1_min, int s1_max, int s2_min, int s2_max, int s3_mi
     float s1_norm, s2_norm, s3_norm, s4_norm; // Valores normalizados entre 0.0 e 1.0
 
     // Depois do loop de calibração, ao calcular resultados finais
-    int LIMITE_PRETO_S1 = s1_min + ((s1_max - s1_min) * 3 / 4); // 75% entre min e max
-    int LIMITE_PRETO_S4 = s4_min + ((s4_max - s4_min) * 3 / 4); // para o sensor da ponta direita
+    int LIMITE_PRETO_S1 = s1_min + (s1_max - s1_min) * PRETO_PERCENT / 100;
+    int LIMITE_PRETO_S4 = s4_min + ((s4_max - s4_min) * PRETO_PERCENT / 100);
 
     //printf("LIMITE_PRETO S1 = %d, S4 = %d\n", LIMITE_PRETO_S1, LIMITE_PRETO_S4);
 
@@ -311,8 +312,8 @@ void run_line_follower(int s1_min, int s1_max, int s2_min, int s2_max, int s3_mi
 
         motorControl(line_position);
 
-        // Esperar 100 ms antes da próxima leitura
-        vTaskDelay(pdMS_TO_TICKS(5));
+        // Esperar 1 ms antes da próxima leitura
+        vTaskDelay(pdMS_TO_TICKS(LOOP_DELAY_MS));
     }
 }
 
@@ -400,9 +401,8 @@ void motor_right_set(int pwm)
 
 float calculaPosicao(float s1, float s2, float s3, float s4)
 {
-#define linelost_threshold 0.05f ///< Linha considerada perdida se soma dos sensores normalizados < 0.05
     float soma = s1 + s2 + s3 + s4;
-    if (soma < linelost_threshold)
+    if (soma < LINELOST_THRESHOLD)
         return 0; // linha perdida
 
     float pos = (s1 * -1.0f + s2 * -0.33f + s3 * 0.33f + s4 * 1.0f) / soma;
