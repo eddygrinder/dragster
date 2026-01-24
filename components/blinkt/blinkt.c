@@ -4,8 +4,8 @@
 #include "hal/gpio_types.h"
 #include "esp_rom_sys.h" // Para o ets_delay_us
 
-#define CLK GPIO_NUM_23
-#define DAT GPIO_NUM_18
+#define CLK GPIO_NUM_18
+#define DAT GPIO_NUM_8
 #define NUM_LEDS 8
 
 typedef struct {

@@ -1,0 +1,35 @@
+dependencies:
+  78/esp-builtin-led:
+    component_hash: e4e6522f5d580494d620963bd6499b6a896b0c347c4fe65e62a22d66cd18c710
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.3'
+    - name: espressif/led_strip
+      registry_url: https://components.espressif.com
+      require: private
+      version: ^2.4.1
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.0.2
+  espressif/led_strip:
+    component_hash: 28c6509a727ef74925b372ed404772aeedf11cce10b78c3f69b3c66799095e2d
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=4.4'
+    source:
+      registry_url: https://components.espressif.com
+      type: service
+    version: 2.5.5
+  idf:
+    source:
+      type: idf
+    version: 5.5.2
+direct_dependencies:
+- 78/esp-builtin-led
+- idf
+manifest_hash: 5e9bbf8e96549f8e03a684b1090b9595ce1c8866e712f4c2331f19e5ed5a9b7a
+target: esp32s3
+version: 2.0.0

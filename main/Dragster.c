@@ -12,25 +12,30 @@
 #include "esp_rom_gpio.h"   // esp_rom_gpio_pad_select_gpio()
 #include "blinkt.h"
 
+#include "led_strip.h"
+#include "driver/rmt_tx.h"
+#define RGB_LED_GPIO 38
+static led_strip_handle_t led;
+
 // ===============================
 // Definições de hardware
 // ===============================
 
 // ----- Sensores QTR-8C -----
-#define S1_CHANNEL ADC_CHANNEL_6 ///< Sensor esquerdo (Amarelo, GPIO34)
-#define S2_CHANNEL ADC_CHANNEL_7 ///< Sensor central esquerdo (Castanho, GPIO35)
-#define S3_CHANNEL ADC_CHANNEL_3 ///< Sensor central direito (Cinzento, GPIO39)
-#define S4_CHANNEL ADC_CHANNEL_5 ///< Sensor direito (Castanho, GPIO33)
+#define S1_CHANNEL ADC_CHANNEL_3 ///< Sensor esquerdo (Amarelo, GPIO34)
+#define S2_CHANNEL ADC_CHANNEL_4 ///< Sensor central esquerdo (Castanho, GPIO35)
+#define S3_CHANNEL ADC_CHANNEL_5 ///< Sensor central direito (Cinzento, GPIO39)
+#define S4_CHANNEL ADC_CHANNEL_6 ///< Sensor direito (Castanho, GPIO33)
 
 adc_oneshot_unit_handle_t adc1_handle; ///< Handle do ADC
 
 // ----- Motores -----
-#define AIN1 12
-#define AIN2 13
-#define PWM1 25
-#define BIN1 14
-#define BIN2 27
-#define PWM2 26
+#define AIN1 17
+#define AIN2 16
+#define PWM1 15
+#define BIN1 40
+#define BIN2 41
+#define PWM2 42
 
 #define MOTOR_PWM_FREQ 20000 ///< Frequência PWM (Hz)
 #define MOTOR_PWM_MODE LEDC_LOW_SPEED_MODE
@@ -41,8 +46,7 @@ adc_oneshot_unit_handle_t adc1_handle; ///< Handle do ADC
 #define MOTOR_PWM_CHANNEL_DTA LEDC_CHANNEL_1 ///< Canal PWM do motor direito
 
 // ----- Botões -----
-#define BTN_CAL 17 ///< GPIO do botão de calibração (substituir XX pelo GPIO real)
-#define LED_CAL 16 ///< GPIO do LED de calibração (substituir XX pelo GPIO real)
+#define BTN_CAL 39 ///< GPIO do botão de calibração (substituir XX pelo GPIO real)
 
 // ===============================
 // Estruturas de dados
@@ -77,6 +81,11 @@ float calculaPosicao(float s1_norm, float s2_norm, float s3_norm, float s4_norm)
 void qtr_calibrate(int *s1_min, int *s1_max, int *s2_min, int *s2_max, int *s3_min, int *s3_max, int *s4_min, int *s4_max, uint32_t duration_ms);
 bool calib_button_pressed(void);
 bool start_led_detected(void);
+void rgb_off(void);
+void rgb_on(void);
+void rgb_init(void);
+
+
 
 /// @brief Estados possíveis do robô durante a prova
 ///
@@ -102,6 +111,10 @@ typedef enum
  */
 void app_main(void)
 {
+
+    // Inicializar RGB interno
+    rgb_init();
+
     // -------------------------------
     // 1) Configuração dos GPIOs de direção
     // -------------------------------
@@ -109,9 +122,6 @@ void app_main(void)
     esp_rom_gpio_pad_select_gpio(BTN_CAL);
     gpio_set_direction(BTN_CAL, GPIO_MODE_INPUT);
     gpio_set_pull_mode(BTN_CAL, GPIO_PULLDOWN_ONLY);
-
-    esp_rom_gpio_pad_select_gpio(LED_CAL);
-    gpio_set_direction(LED_CAL, GPIO_MODE_OUTPUT);
 
     // Motor A (esquerdo)
     esp_rom_gpio_pad_select_gpio(AIN1);
@@ -254,7 +264,6 @@ void controlTask(void *pvParameters)
             motor_right_set(0);
             if (start_led_detected())
             {
-                gpio_set_level(LED_CAL, 0); // Apaga LED de calibração
                 vTaskDelay(pdMS_TO_TICKS(2000)); // Pequena espera antes de arrancar
 
                 state = RUN;
@@ -280,7 +289,7 @@ void run_line_follower(int s1_min, int s1_max, int s2_min, int s2_max, int s3_mi
     int LIMITE_PRETO_S1 = s1_min + (s1_max - s1_min) * PRETO_PERCENT / 100;
     int LIMITE_PRETO_S4 = s4_min + ((s4_max - s4_min) * PRETO_PERCENT / 100);
 
-    //printf("LIMITE_PRETO S1 = %d, S4 = %d\n", LIMITE_PRETO_S1, LIMITE_PRETO_S4);
+    // printf("LIMITE_PRETO S1 = %d, S4 = %d\n", LIMITE_PRETO_S1, LIMITE_PRETO_S4);
 
     while (1)
     {
@@ -429,7 +438,7 @@ void qtr_calibrate(int *s1_min, int *s1_max, int *s2_min, int *s2_max, int *s3_m
     blinkt_init();  // Inicializa os pinos
     blinkt_white(); // Acende todos os LEDs a branco
 
-    gpio_set_level(LED_CAL, 1); // Acende LED de calibração
+    rgb_on(); // Acende LED de calibração
 
     printf("=== CALIBRACAO SENSORES ===\n");
     printf("Move o Dragster lentamente sobre a linha e o fundo...\n");
@@ -485,6 +494,7 @@ void qtr_calibrate(int *s1_min, int *s1_max, int *s2_min, int *s2_max, int *s3_m
     printf("=======================================\n");
 
     printf("Calibração concluída! Reinicia para correr o programa.\n");
+    rgb_off(); // Apaga LED de calibração
 
     // Impede que continue (opcional)
     // while (1)
@@ -505,4 +515,31 @@ bool calib_button_pressed(void)
 bool start_led_detected(void)
 {
     return true; // ou true, conforme precisares nos testes
+}
+
+void rgb_init(void)
+{
+    led_strip_config_t strip_config = {
+        .strip_gpio_num = RGB_LED_GPIO,
+        .max_leds = 1,
+        .led_pixel_format = LED_PIXEL_FORMAT_GRB,
+        .led_model = LED_MODEL_WS2812,
+    };
+
+    led_strip_rmt_config_t rmt_config = {
+        .resolution_hz = 10 * 1000 * 1000,
+    };
+
+    led_strip_new_rmt_device(&strip_config, &rmt_config, &led);
+    led_strip_clear(led); // começa desligado
+}
+
+void rgb_on(void)
+{
+    led_strip_set_pixel(led, 0, 50, 0, 0); // verde fraquinho
+    led_strip_refresh(led);
+}
+void rgb_off(void)
+{
+    led_strip_clear(led);
 }
