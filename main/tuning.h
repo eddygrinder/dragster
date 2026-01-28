@@ -9,12 +9,12 @@
 // ===============================
 // PID (ajustável durante testes)
 // ===============================
-float KP = 125.0f;       ///< Ganho proporcional do controlador
+extern float KP;       ///< Ganho proporcional do controlador
 
 // ===============================
 // Motores (ajustável durante testes)
 // ===============================
-int BASE_SPEED = 950;    ///< Velocidade base dos motores (0 a 1023)
+int BASE_SPEED = 950;   ///< Velocidade base dos motores (0 a 1023)
 
 // ===============================
 // Sensores (constantes)
@@ -26,5 +26,5 @@ const float LINELOST_THRESHOLD = 0.05f; ///< Linha considerada perdida se soma d
 // ===============================
 // Timing / Loops (constantes)
 // ===============================
-const int LOOP_DELAY_MS = 1;            ///< Delay do loop principal em ms
+const int LOOP_DELAY_MS = 10;            ///< Delay do loop principal em ms
 const uint32_t CALIBRATION_TIME_MS = 5000; ///< Duração da calibração em ms

@@ -12,10 +12,171 @@
 #include "esp_rom_gpio.h"   // esp_rom_gpio_pad_select_gpio()
 #include "blinkt.h"
 
+#include "nvs_flash.h"
+#include "esp_nimble_hci.h"
+#include "nimble/nimble_port.h"
+#include "nimble/nimble_port_freertos.h"
+#include "host/ble_hs.h"
+#include "host/util/util.h"
+#include "host/ble_gap.h"
+
 #include "led_strip.h"
 #include "driver/rmt_tx.h"
 #define RGB_LED_GPIO 38
 static led_strip_handle_t led;
+
+// Tag para logs
+
+static const char *TAG = "NIMBLE_SCAN";
+
+static uint8_t own_addr_type;
+
+/* Converte endereço BLE em string XX:XX:XX:XX:XX:XX */
+static void addr_to_str(const ble_addr_t *addr, char *str, size_t size)
+{
+    snprintf(str, size,
+             "%02X:%02X:%02X:%02X:%02X:%02X",
+             addr->val[5], addr->val[4], addr->val[3],
+             addr->val[2], addr->val[1], addr->val[0]);
+}
+
+/* Callback de anúncio recebido */
+static int
+gap_event_cb(struct ble_gap_event *event, void *arg)
+{
+    if (event->type == BLE_GAP_EVENT_DISC)
+    {
+        const struct ble_gap_disc_desc *d = &event->disc;
+
+        char addr_str[18];
+        addr_to_str(&d->addr, addr_str, sizeof(addr_str));
+
+        /* Tenta extrair nome do advertising */
+        struct ble_hs_adv_fields fields;
+        int rc = ble_hs_adv_parse_fields(&fields, d->data, d->length_data);
+        char name[64] = "Unknown";
+
+        if (rc == 0)
+        {
+            if (fields.name != NULL && fields.name_len > 0)
+            {
+                int len = fields.name_len < (int)sizeof(name) - 1 ? fields.name_len : (int)sizeof(name) - 1;
+                memcpy(name, fields.name, len);
+                name[len] = '\0';
+            }
+        }
+
+        ESP_LOGI(TAG, "Device: %s | MAC: %s | RSSI: %d dBm",
+                 name, addr_str, d->rssi);
+    }
+
+    return 0;
+}
+
+/* Inicia scan contínuo */
+static void
+start_scan(void)
+{
+    struct ble_gap_disc_params disc_params;
+
+    memset(&disc_params, 0, sizeof(disc_params));
+
+    disc_params.itvl = 0x50;       // intervalo de scan
+    disc_params.window = 0x30;     // janela de scan
+    disc_params.passive = 0;       // 0 = active scan
+    disc_params.limited = 0;       // general discovery
+    disc_params.filter_policy = 0; // BLE_HCI_SCAN_FILT_NO_WL
+
+    /* Algumas versões não têm filter_dup/filter_dups – se não existir, ignora.
+    disc_params.filter_dup = 0; */
+
+    int rc = ble_gap_disc(own_addr_type, BLE_HS_FOREVER,
+                          &disc_params, gap_event_cb, NULL);
+    if (rc != 0)
+    {
+        ESP_LOGE(TAG, "Error starting discovery; rc=%d", rc);
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Scanning for BLE devices...");
+    }
+}
+
+/* Callback NimBLE quando o host está pronto */
+static void ble_on_sync(void)
+{
+    int rc = ble_hs_id_infer_auto(0, &own_addr_type);
+    if (rc != 0)
+    {
+        ESP_LOGE(TAG, "Address infer failed; rc=%d", rc);
+        return;
+    }
+
+    // Nome do dispositivo
+    struct ble_hs_adv_fields fields;
+    memset(&fields, 0, sizeof(fields));
+    fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
+    const char *name = "DRAGSTER";
+    fields.name = (uint8_t *)name;
+    fields.name_len = strlen(name);
+    fields.name_is_complete = 1;
+
+    ble_gap_adv_set_fields(&fields);
+
+    // Parâmetros de advertising
+    struct ble_gap_adv_params adv_params;
+    memset(&adv_params, 0, sizeof(adv_params));
+    adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
+    adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
+
+    ESP_LOGI(TAG, "Starting advertising...");
+    ble_gap_adv_start(
+        own_addr_type,
+        NULL,
+        BLE_HS_FOREVER,
+        &adv_params,
+        NULL,
+        NULL);
+}
+
+/* Task principal NimBLE (corre o host) */
+static void
+host_task(void *param)
+{
+    ESP_LOGI(TAG, "NimBLE host task started");
+    nimble_port_run(); // Nunca retorna
+    nimble_port_freertos_deinit();
+}
+
+/* Inicialização NimBLE + FreeRTOS */
+static void ble_init(void)
+{
+    // NVS
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+
+    // A partir do IDF 5.x, o controller + HCI é feito dentro do nimble_port_init()
+    nimble_port_init(); // se isto falhar, retorna assert/log
+
+    // Configurar callbacks NimBLE host
+    ble_hs_cfg.sync_cb = ble_on_sync;
+    ble_hs_cfg.reset_cb = NULL;
+
+    // Criar task FreeRTOS para o host NimBLE
+    nimble_port_freertos_init(host_task);
+}
+
+// ==============================
+
+// ------------------------------
+// PID / control parameters
+// ------------------------------
+float KP = 120.0f; // variável atualizável via BLE
 
 // ===============================
 // Definições de hardware
@@ -28,6 +189,8 @@ static led_strip_handle_t led;
 #define S4_CHANNEL ADC_CHANNEL_6 ///< Sensor direito (Castanho, GPIO33)
 
 adc_oneshot_unit_handle_t adc1_handle; ///< Handle do ADC
+
+bool calib_done = false; // Flag calibração
 
 // ----- Motores -----
 #define AIN1 17
@@ -85,8 +248,6 @@ void rgb_off(void);
 void rgb_on(void);
 void rgb_init(void);
 
-
-
 /// @brief Estados possíveis do robô durante a prova
 ///
 /// O robô passa por estes estados em sequência:
@@ -114,6 +275,8 @@ void app_main(void)
 
     // Inicializar RGB interno
     rgb_init();
+    // Inicializar Bluetooth
+    ble_init();
 
     // -------------------------------
     // 1) Configuração dos GPIOs de direção
@@ -198,7 +361,7 @@ void app_main(void)
     xTaskCreate(
         controlTask,    ///< Função da task
         "Control Task", ///< Nome da task
-        2048,           ///< Stack size
+        4096,           ///< Stack size
         NULL,           ///< Parâmetros
         1,              ///< Prioridade
         NULL            ///< Handle da task (não usado)
@@ -246,7 +409,12 @@ void controlTask(void *pvParameters)
         case WAIT_CALIB:
             motor_left_set(0);
             motor_right_set(0);
-            if (calib_button_pressed())
+            if (calib_done)
+            {
+                // Se já calibrado, pula direto para start
+                state = WAIT_START;
+            }
+            else if (calib_button_pressed())
             {
                 state = CALIBRATING;
             }
@@ -256,6 +424,8 @@ void controlTask(void *pvParameters)
             motor_left_set(0);
             motor_right_set(0);
             qtr_calibrate(&s1_min, &s1_max, &s2_min, &s2_max, &s3_min, &s3_max, &s4_min, &s4_max, duration_ms); // corre UMA VEZ
+
+            calib_done = true; // Marca calibração feita
             state = WAIT_START;
             break;
 
@@ -265,13 +435,13 @@ void controlTask(void *pvParameters)
             if (start_led_detected())
             {
                 vTaskDelay(pdMS_TO_TICKS(2000)); // Pequena espera antes de arrancar
-
                 state = RUN;
             }
             break;
 
         case RUN:
             run_line_follower(s1_min, s1_max, s2_min, s2_max, s3_min, s3_max, s4_min, s4_max); // loop contínuo
+            state = WAIT_CALIB;                                                                // reinicia ciclo após prova
             break;
         }
 
@@ -305,6 +475,7 @@ void run_line_follower(int s1_min, int s1_max, int s2_min, int s2_max, int s3_mi
         s4_norm = normalize(s4, s4_min, s4_max);
 
         line_position = calculaPosicao(s1_norm, s2_norm, s3_norm, s4_norm);
+        motorControl(line_position);
 
         if (s1 > LIMITE_PRETO_S1 && s4 > LIMITE_PRETO_S4)
         {
@@ -313,13 +484,7 @@ void run_line_follower(int s1_min, int s1_max, int s2_min, int s2_max, int s3_mi
             motor_right_set(0);
 
             printf("Prova terminada!\n");
-
-            // Loop seguro: a task fica “congelada” e não consome CPU
-            while (1)
-                vTaskDelay(pdMS_TO_TICKS(1000));
         }
-
-        motorControl(line_position);
 
         // Esperar 1 ms antes da próxima leitura
         vTaskDelay(pdMS_TO_TICKS(LOOP_DELAY_MS));
