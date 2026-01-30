@@ -5,6 +5,7 @@
 #include "tuning.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
 #include "esp_adc/adc_oneshot.h"
 #include "driver/gpio.h"
 #include "driver/ledc.h"    // PWM control
@@ -22,161 +23,10 @@
 
 #include "led_strip.h"
 #include "driver/rmt_tx.h"
-#define RGB_LED_GPIO 38
-static led_strip_handle_t led;
 
-// Tag para logs
-
-static const char *TAG = "NIMBLE_SCAN";
-
-static uint8_t own_addr_type;
-
-/* Converte endereço BLE em string XX:XX:XX:XX:XX:XX */
-static void addr_to_str(const ble_addr_t *addr, char *str, size_t size)
-{
-    snprintf(str, size,
-             "%02X:%02X:%02X:%02X:%02X:%02X",
-             addr->val[5], addr->val[4], addr->val[3],
-             addr->val[2], addr->val[1], addr->val[0]);
-}
-
-/* Callback de anúncio recebido */
-static int
-gap_event_cb(struct ble_gap_event *event, void *arg)
-{
-    if (event->type == BLE_GAP_EVENT_DISC)
-    {
-        const struct ble_gap_disc_desc *d = &event->disc;
-
-        char addr_str[18];
-        addr_to_str(&d->addr, addr_str, sizeof(addr_str));
-
-        /* Tenta extrair nome do advertising */
-        struct ble_hs_adv_fields fields;
-        int rc = ble_hs_adv_parse_fields(&fields, d->data, d->length_data);
-        char name[64] = "Unknown";
-
-        if (rc == 0)
-        {
-            if (fields.name != NULL && fields.name_len > 0)
-            {
-                int len = fields.name_len < (int)sizeof(name) - 1 ? fields.name_len : (int)sizeof(name) - 1;
-                memcpy(name, fields.name, len);
-                name[len] = '\0';
-            }
-        }
-
-        ESP_LOGI(TAG, "Device: %s | MAC: %s | RSSI: %d dBm",
-                 name, addr_str, d->rssi);
-    }
-
-    return 0;
-}
-
-/* Inicia scan contínuo */
-static void
-start_scan(void)
-{
-    struct ble_gap_disc_params disc_params;
-
-    memset(&disc_params, 0, sizeof(disc_params));
-
-    disc_params.itvl = 0x50;       // intervalo de scan
-    disc_params.window = 0x30;     // janela de scan
-    disc_params.passive = 0;       // 0 = active scan
-    disc_params.limited = 0;       // general discovery
-    disc_params.filter_policy = 0; // BLE_HCI_SCAN_FILT_NO_WL
-
-    /* Algumas versões não têm filter_dup/filter_dups – se não existir, ignora.
-    disc_params.filter_dup = 0; */
-
-    int rc = ble_gap_disc(own_addr_type, BLE_HS_FOREVER,
-                          &disc_params, gap_event_cb, NULL);
-    if (rc != 0)
-    {
-        ESP_LOGE(TAG, "Error starting discovery; rc=%d", rc);
-    }
-    else
-    {
-        ESP_LOGI(TAG, "Scanning for BLE devices...");
-    }
-}
-
-/* Callback NimBLE quando o host está pronto */
-static void ble_on_sync(void)
-{
-    int rc = ble_hs_id_infer_auto(0, &own_addr_type);
-    if (rc != 0)
-    {
-        ESP_LOGE(TAG, "Address infer failed; rc=%d", rc);
-        return;
-    }
-
-    // Nome do dispositivo
-    struct ble_hs_adv_fields fields;
-    memset(&fields, 0, sizeof(fields));
-    fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
-    const char *name = "DRAGSTER";
-    fields.name = (uint8_t *)name;
-    fields.name_len = strlen(name);
-    fields.name_is_complete = 1;
-
-    ble_gap_adv_set_fields(&fields);
-
-    // Parâmetros de advertising
-    struct ble_gap_adv_params adv_params;
-    memset(&adv_params, 0, sizeof(adv_params));
-    adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
-    adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
-
-    ESP_LOGI(TAG, "Starting advertising...");
-    ble_gap_adv_start(
-        own_addr_type,
-        NULL,
-        BLE_HS_FOREVER,
-        &adv_params,
-        NULL,
-        NULL);
-}
-
-/* Task principal NimBLE (corre o host) */
-static void
-host_task(void *param)
-{
-    ESP_LOGI(TAG, "NimBLE host task started");
-    nimble_port_run(); // Nunca retorna
-    nimble_port_freertos_deinit();
-}
-
-/* Inicialização NimBLE + FreeRTOS */
-static void ble_init(void)
-{
-    // NVS
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
-    {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
-
-    // A partir do IDF 5.x, o controller + HCI é feito dentro do nimble_port_init()
-    nimble_port_init(); // se isto falhar, retorna assert/log
-
-    // Configurar callbacks NimBLE host
-    ble_hs_cfg.sync_cb = ble_on_sync;
-    ble_hs_cfg.reset_cb = NULL;
-
-    // Criar task FreeRTOS para o host NimBLE
-    nimble_port_freertos_init(host_task);
-}
-
-// ==============================
-
-// ------------------------------
-// PID / control parameters
-// ------------------------------
-float KP = 120.0f; // variável atualizável via BLE
+#include "host/ble_uuid.h"
+#include "services/gap/ble_svc_gap.h"
+#include "services/gatt/ble_svc_gatt.h"
 
 // ===============================
 // Definições de hardware
@@ -187,10 +37,6 @@ float KP = 120.0f; // variável atualizável via BLE
 #define S2_CHANNEL ADC_CHANNEL_4 ///< Sensor central esquerdo (Castanho, GPIO35)
 #define S3_CHANNEL ADC_CHANNEL_5 ///< Sensor central direito (Cinzento, GPIO39)
 #define S4_CHANNEL ADC_CHANNEL_6 ///< Sensor direito (Castanho, GPIO33)
-
-adc_oneshot_unit_handle_t adc1_handle; ///< Handle do ADC
-
-bool calib_done = false; // Flag calibração
 
 // ----- Motores -----
 #define AIN1 17
@@ -208,12 +54,31 @@ bool calib_done = false; // Flag calibração
 #define MOTOR_PWM_CHANNEL_ESQ LEDC_CHANNEL_0 ///< Canal PWM do motor esquerdo
 #define MOTOR_PWM_CHANNEL_DTA LEDC_CHANNEL_1 ///< Canal PWM do motor direito
 
-// ----- Botões -----
 #define BTN_CAL 39 ///< GPIO do botão de calibração (substituir XX pelo GPIO real)
+#define RGB_LED_GPIO 38
+
+adc_oneshot_unit_handle_t adc1_handle; ///< Handle do ADC
+static led_strip_handle_t led;
+
+// ----- Botões -----
+bool calib_done = false; // Flag calibração
+
+volatile bool led_command = false;
+volatile uint8_t led_value_new = 0;
+
+// Dente azul - Tag para logs
+static const char *TAG = "NIMBLE_SCAN";
+static uint8_t own_addr_type;
+
+// ------------------------------
+// PID / control parameters
+// ------------------------------
+float KP = 120.0f; // variável atualizável via BLE
 
 // ===============================
 // Estruturas de dados
 // ===============================
+
 typedef struct
 {
     float s1, s2, s3, s4; ///< Valores normalizados dos sensores
@@ -221,14 +86,19 @@ typedef struct
 
 volatile SensorValues sensors; ///< Valores atuais dos sensores
 
+typedef struct
+{
+    int limite_s1;
+    int limite_s4;
+} LimitesPreto;
+
 // ===============================
 // Protótipos de funções
 // ===============================
 
 /// @brief Task principal de controlo do robô
 void controlTask(void *pvParameters);
-void run_line_follower(int s1_min, int s1_max, int s2_min, int s2_max, int s3_min, int s3_max, int s4_min, int s4_max); // loop contínuo
-
+void run_line_follower(int s1_min, int s1_max, int s2_min, int s2_max, int s3_min, int s3_max, int s4_min, int s4_max, int limite_s1, int limite_s4); // loop contínuo
 /**
  * @brief Ajusta os motores esquerdo e direito com base na posição da linha.
  *
@@ -241,12 +111,22 @@ void motor_right_set(int duty);
 /// @brief Funções auxiliares
 float normalize(int raw, int min, int max);
 float calculaPosicao(float s1_norm, float s2_norm, float s3_norm, float s4_norm);
-void qtr_calibrate(int *s1_min, int *s1_max, int *s2_min, int *s2_max, int *s3_min, int *s3_max, int *s4_min, int *s4_max, uint32_t duration_ms);
+LimitesPreto qtr_calibrate(int *sMin, int *sMax, uint32_t duration_ms);
 bool calib_button_pressed(void);
 bool start_led_detected(void);
+void rgb_init(void);
 void rgb_off(void);
 void rgb_on(void);
-void rgb_init(void);
+
+/// @brief Dente azul
+static void ble_init(void);
+static void host_task(void *param);
+static void ble_on_sync(void);
+int gatt_svr_init(void);
+static int led_chr_access_cb(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg);
+static void start_scan(void);
+static int gap_event_cb(struct ble_gap_event *event, void *arg);
+static void addr_to_str(const ble_addr_t *addr, char *str, size_t size);
 
 /// @brief Estados possíveis do robô durante a prova
 ///
@@ -260,7 +140,7 @@ typedef enum
     WAIT_CALIB,  ///< Estado inicial: espera que o botão de calibração seja pressionado
     CALIBRATING, ///< Estado de calibração: calibra sensores QTR-8C, acontece apenas uma vez
     WAIT_START,  ///< Estado de espera pelo LED de arranque
-    RUN          ///< Estado de execução: segue a linha utilizando os valores calibrados
+    RUN,          ///< Estado de execução: segue a linha utilizando os valores calibrados
 } robot_state_t;
 
 // ===============================
@@ -336,7 +216,7 @@ void app_main(void)
     ledc_channel_config(&motorDTA);
 
     // -------------------------------
-    // 3) Inicializar ADC
+    // 3) Iniciar ADC
     // -------------------------------
     adc_oneshot_unit_init_cfg_t init_config = {
         .unit_id = ADC_UNIT_1};
@@ -375,10 +255,9 @@ void controlTask(void *pvParameters)
 {
 
     uint32_t duration_ms = CALIBRATION_TIME_MS; ///< Duração da calibração em milissegundos
-    int s1_min = 4095, s1_max = 0;
-    int s2_min = 4095, s2_max = 0;
-    int s3_min = 4095, s3_max = 0;
-    int s4_min = 4095, s4_max = 0;
+    int sMin[4] = {4095, 4095, 4095, 4095};
+    int sMax[4] = {0, 0, 0, 0};
+    LimitesPreto limites = {0, 0}; // Todos os campos começam a 0
 
     /// @brief Espera até que o botão de calibração seja pressionado
     /*
@@ -404,6 +283,20 @@ void controlTask(void *pvParameters)
 
     while (1)
     {
+        // Processa comando LED (ATÉ PRIMEIRO no loop)
+        if (led_command)
+        {
+            led_command = false;
+            if (led_value_new)
+            {
+                rgb_on();
+            }
+            else
+            {
+                rgb_off();
+            }
+            ESP_LOGI(TAG, "LED controlado por BLE: %d", led_value_new);
+        }
         switch (state)
         {
         case WAIT_CALIB:
@@ -423,8 +316,7 @@ void controlTask(void *pvParameters)
         case CALIBRATING:
             motor_left_set(0);
             motor_right_set(0);
-            qtr_calibrate(&s1_min, &s1_max, &s2_min, &s2_max, &s3_min, &s3_max, &s4_min, &s4_max, duration_ms); // corre UMA VEZ
-
+            limites = qtr_calibrate(sMin, sMax, duration_ms); // corre UMA VEZ
             calib_done = true; // Marca calibração feita
             state = WAIT_START;
             break;
@@ -440,44 +332,36 @@ void controlTask(void *pvParameters)
             break;
 
         case RUN:
-            run_line_follower(s1_min, s1_max, s2_min, s2_max, s3_min, s3_max, s4_min, s4_max); // loop contínuo
-            state = WAIT_CALIB;                                                                // reinicia ciclo após prova
+            run_line_follower(sMin[0], sMax[0], sMin[1], sMax[1], sMin[2], sMax[2], sMin[3], sMax[3], limites.limite_s1, limites.limite_s4); // loop contínuo
+            state = WAIT_CALIB;                                                                                                              // reinicia ciclo após prova
             break;
         }
-
-        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
 
-void run_line_follower(int s1_min, int s1_max, int s2_min, int s2_max, int s3_min, int s3_max, int s4_min, int s4_max)
+void run_line_follower(int s1_min, int s1_max, int s2_min, int s2_max, int s3_min, int s3_max, int s4_min, int s4_max, int limite_s1, int limite_s4)
 {
-    int s1, s2, s3, s4;
-    float line_position = 0.0f;               ///< Posição da linha calculada
-    float s1_norm, s2_norm, s3_norm, s4_norm; // Valores normalizados entre 0.0 e 1.0
-
-    // Depois do loop de calibração, ao calcular resultados finais
-    int LIMITE_PRETO_S1 = s1_min + (s1_max - s1_min) * PRETO_PERCENT / 100;
-    int LIMITE_PRETO_S4 = s4_min + ((s4_max - s4_min) * PRETO_PERCENT / 100);
-
-    // printf("LIMITE_PRETO S1 = %d, S4 = %d\n", LIMITE_PRETO_S1, LIMITE_PRETO_S4);
+    int raw[4];
+    float line_position = 0.0f; ///< Posição da linha calculada
 
     while (1)
     {
         // Ler valor de cada canal
-        adc_oneshot_read(adc1_handle, ADC_CHANNEL_6, &s1);
-        adc_oneshot_read(adc1_handle, ADC_CHANNEL_7, &s2);
-        adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &s3);
-        adc_oneshot_read(adc1_handle, ADC_CHANNEL_5, &s4);
+        adc_oneshot_read(adc1_handle, ADC_CHANNEL_6, &raw[0]);
+        adc_oneshot_read(adc1_handle, ADC_CHANNEL_7, &raw[1]);
+        adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &raw[2]);
+        adc_oneshot_read(adc1_handle, ADC_CHANNEL_5, &raw[3]);
 
-        s1_norm = normalize(s1, s1_min, s1_max);
-        s2_norm = normalize(s2, s2_min, s2_max);
-        s3_norm = normalize(s3, s3_min, s3_max);
-        s4_norm = normalize(s4, s4_min, s4_max);
+        // Valores normalizados entre 0.0 e 1.0
+        float s1_norm = normalize(raw[0], s1_min, s1_max);
+        float s2_norm = normalize(raw[1], s2_min, s2_max);
+        float s3_norm = normalize(raw[2], s3_min, s3_max);
+        float s4_norm = normalize(raw[3], s4_min, s4_max);
 
         line_position = calculaPosicao(s1_norm, s2_norm, s3_norm, s4_norm);
         motorControl(line_position);
 
-        if (s1 > LIMITE_PRETO_S1 && s4 > LIMITE_PRETO_S4)
+        if (raw[0] > limite_s1 && raw[3] > limite_s4)
         {
             // Para os motores
             motor_left_set(0);
@@ -595,18 +479,19 @@ float normalize(int raw, int min, int max)
     return (float)(raw - min) / (float)(max - min);
 }
 
-void qtr_calibrate(int *s1_min, int *s1_max, int *s2_min, int *s2_max, int *s3_min, int *s3_max, int *s4_min, int *s4_max, uint32_t duration_ms)
+LimitesPreto qtr_calibrate(int *sMin, int *sMax, uint32_t duration_ms) // Devolve uma estrutura com os limites de preto
 {
+    int raw[4];
+    LimitesPreto limites;
 
-    int s1_raw, s2_raw, s3_raw, s4_raw;
     // Inicializa Blinkt!
     blinkt_init();  // Inicializa os pinos
     blinkt_white(); // Acende todos os LEDs a branco
 
     rgb_on(); // Acende LED de calibração
 
-    printf("=== CALIBRACAO SENSORES ===\n");
-    printf("Move o Dragster lentamente sobre a linha e o fundo...\n");
+    ESP_LOGI(TAG, "=== CALIBRACAO SENSORES ===");
+    ESP_LOGI(TAG, "Move o Dragster lentamente sobre a linha e o fundo...");
 
     uint32_t inicio = xTaskGetTickCount();
 
@@ -615,55 +500,48 @@ void qtr_calibrate(int *s1_min, int *s1_max, int *s2_min, int *s2_max, int *s3_m
     // -----------------------
     while (xTaskGetTickCount() - inicio < pdMS_TO_TICKS(duration_ms))
     {
-        adc_oneshot_read(adc1_handle, S1_CHANNEL, &s1_raw);
-        adc_oneshot_read(adc1_handle, S2_CHANNEL, &s2_raw);
-        adc_oneshot_read(adc1_handle, S3_CHANNEL, &s3_raw);
-        adc_oneshot_read(adc1_handle, S4_CHANNEL, &s4_raw);
+        adc_oneshot_read(adc1_handle, S1_CHANNEL, &raw[0]);
+        adc_oneshot_read(adc1_handle, S2_CHANNEL, &raw[1]);
+        adc_oneshot_read(adc1_handle, S3_CHANNEL, &raw[2]);
+        adc_oneshot_read(adc1_handle, S4_CHANNEL, &raw[3]);
 
-        if (s1_raw < *s1_min)
-            *s1_min = s1_raw;
-        if (s1_raw > *s1_max)
-            *s1_max = s1_raw;
+        for (int i = 0; i < 4; i++)
+        {
+            if (raw[i] < sMin[i])
+                sMin[i] = raw[i];
+            if (raw[i] > sMax[i])
+                sMax[i] = raw[i];
+        }
 
-        if (s2_raw < *s2_min)
-            *s2_min = s2_raw;
-        if (s2_raw > *s2_max)
-            *s2_max = s2_raw;
-
-        if (s3_raw < *s3_min)
-            *s3_min = s3_raw;
-        if (s3_raw > *s3_max)
-            *s3_max = s3_raw;
-
-        if (s4_raw < *s4_min)
-            *s4_min = s4_raw;
-        if (s4_raw > *s4_max)
-            *s4_max = s4_raw;
-
-        printf("S1 raw=%4d min=%4d max=%4d | S2 raw=%4d min=%4d max=%4d\n",
-               s1_raw, *s1_min, *s1_max, s2_raw, *s2_min, *s2_max);
-        printf("S3 raw=%4d min=%4d max=%4d | S4 raw=%4d min=%4d max=%4d\n\n",
-               s3_raw, *s3_min, *s3_max, s4_raw, *s4_min, *s4_max);
+        ESP_LOGI(TAG, "S1 raw=%4d min=%4d max=%4d | S2 raw=%4d min=%4d max=%4d",
+                 raw[0], sMin[0], sMax[0], raw[1], sMin[1], sMax[1]);
+        ESP_LOGI(TAG, "S3 raw=%4d min=%4d max=%4d | S4 raw=%4d min=%4d max=%4d",
+                 raw[2], sMin[2], sMax[2], raw[3], sMin[3], sMax[3]);
 
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 
+    // Depois do loop de calibração, ao calcular resultados finais
+    limites.limite_s1 = sMin[0] + (sMax[0] - sMin[0]) * PRETO_PERCENT / 100;
+    limites.limite_s4 = sMin[3] + ((sMax[3] - sMin[3]) * PRETO_PERCENT / 100);
+
+    ESP_LOGI(TAG, "\n=== Limites Preto ===");
+    ESP_LOGI(TAG, "S0 limite=%4d S4 limite=%4d ", limites.limite_s1, limites.limite_s4);
+
     // -----------------------
     // RESULTADOS FINAIS
     // -----------------------
-    printf("\n=== RESULTADOS FINAIS DA CALIBRACAO ===\n");
-    printf("S1: min=%4d  max=%4d\n", *s1_min, *s1_max);
-    printf("S2: min=%4d  max=%4d\n", *s2_min, *s2_max);
-    printf("S3: min=%4d  max=%4d\n", *s3_min, *s3_max);
-    printf("S4: min=%4d  max=%4d\n", *s4_min, *s4_max);
-    printf("=======================================\n");
+    ESP_LOGI(TAG, "\n=== RESULTADOS FINAIS DA CALIBRACAO ===");
+    ESP_LOGI(TAG, "S1: min=%4d  max=%4d", sMin[0], sMax[0]);
+    ESP_LOGI(TAG, "S2: min=%4d  max=%4d", sMin[1], sMax[1]);
+    ESP_LOGI(TAG, "S3: min=%4d  max=%4d", sMin[2], sMax[2]);
+    ESP_LOGI(TAG, "S4: min=%4d  max=%4d", sMin[3], sMax[3]);
+    ESP_LOGI(TAG, "=======================================");
+    ESP_LOGI(TAG, "Calibração concluída! Reinicia para correr o programa.");
 
-    printf("Calibração concluída! Reinicia para correr o programa.\n");
     rgb_off(); // Apaga LED de calibração
 
-    // Impede que continue (opcional)
-    // while (1)
-    //    vTaskDelay(pdMS_TO_TICKS(1000));
+    return limites;
 }
 
 /**
@@ -673,8 +551,19 @@ void qtr_calibrate(int *s1_min, int *s1_max, int *s2_min, int *s2_max, int *s3_m
  */
 bool calib_button_pressed(void)
 {
-    printf("gpio_get_level(BTN_CAL) = %d\n", gpio_get_level(BTN_CAL));
-    return (gpio_get_level(BTN_CAL) == 1); // Retorna true quando pressionado
+    static int last_btn_level = -1;      // guarda último estado do botão
+    int level = gpio_get_level(BTN_CAL); // lê GPIO atual
+
+    if (level != last_btn_level)
+    { // só loga se houver alteração
+        ESP_LOGI(TAG, "BTN_CAL = %d", level);
+        last_btn_level = level;
+    }
+
+    // **cede CPU para não disparar watchdog**
+    vTaskDelay(pdMS_TO_TICKS(10)); // ou taskYIELD()
+
+    return (level == 1); // devolve true se botão pressionado
 }
 
 bool start_led_detected(void)
@@ -707,4 +596,225 @@ void rgb_on(void)
 void rgb_off(void)
 {
     led_strip_clear(led);
+}
+
+/* Converte endereço BLE em string XX:XX:XX:XX:XX:XX */
+static void addr_to_str(const ble_addr_t *addr, char *str, size_t size)
+{
+    snprintf(str, size,
+             "%02X:%02X:%02X:%02X:%02X:%02X",
+             addr->val[5], addr->val[4], addr->val[3],
+             addr->val[2], addr->val[1], addr->val[0]);
+}
+
+/* Callback de anúncio recebido */
+static int gap_event_cb(struct ble_gap_event *event, void *arg)
+{
+    if (event->type == BLE_GAP_EVENT_DISC)
+    {
+        const struct ble_gap_disc_desc *d = &event->disc;
+
+        char addr_str[18];
+        addr_to_str(&d->addr, addr_str, sizeof(addr_str));
+
+        /* Tenta extrair nome do advertising */
+        struct ble_hs_adv_fields fields;
+        int rc = ble_hs_adv_parse_fields(&fields, d->data, d->length_data);
+        char name[64] = "Unknown";
+
+        if (rc == 0)
+        {
+            if (fields.name != NULL && fields.name_len > 0)
+            {
+                int len = fields.name_len < (int)sizeof(name) - 1 ? fields.name_len : (int)sizeof(name) - 1;
+                memcpy(name, fields.name, len);
+                name[len] = '\0';
+            }
+        }
+
+        ESP_LOGI(TAG, "Device: %s | MAC: %s | RSSI: %d dBm",
+                 name, addr_str, d->rssi);
+    }
+
+    return 0;
+}
+
+/* Inicia scan contínuo */
+static void start_scan(void)
+{
+    struct ble_gap_disc_params disc_params;
+
+    memset(&disc_params, 0, sizeof(disc_params));
+
+    disc_params.itvl = 0x50;       // intervalo de scan
+    disc_params.window = 0x30;     // janela de scan
+    disc_params.passive = 0;       // 0 = active scan
+    disc_params.limited = 0;       // general discovery
+    disc_params.filter_policy = 0; // BLE_HCI_SCAN_FILT_NO_WL
+
+    /* Algumas versões não têm filter_dup/filter_dups – se não existir, ignora.
+    disc_params.filter_dup = 0; */
+
+    int rc = ble_gap_disc(own_addr_type, BLE_HS_FOREVER,
+                          &disc_params, gap_event_cb, NULL);
+    if (rc != 0)
+    {
+        ESP_LOGE(TAG, "Error starting discovery; rc=%d", rc);
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Scanning for BLE devices...");
+    }
+}
+
+/* Callback chamado quando o cliente escreve na characteristic */
+static int led_chr_access_cb(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg)
+{
+    if (ctxt->op == BLE_GATT_ACCESS_OP_WRITE_CHR)
+    {
+        if (ctxt->om->om_len >= 1)
+        {
+            // Ler o primeiro byte enviado
+            uint8_t val = ctxt->om->om_data[0];
+
+            // Atualizar variável global (volatile) para a task principal
+            led_value_new = val ? 1 : 0;
+            led_command = true;
+
+            ESP_LOGI(TAG, "LED write received: %d", led_value_new);
+        }
+    }
+
+    return 0; // sucesso
+}
+
+/* Tabela GATT com um serviço simples e characteristic LED */
+static const struct ble_gatt_svc_def gatt_svcs[] = {
+    {
+        /*** Serviço personalizado ***/
+        .type = BLE_GATT_SVC_TYPE_PRIMARY,
+        .uuid = BLE_UUID128_DECLARE(0x04, 0xa4, 0xc3, 0x5f, 0xef, 0xba, 0x6f, 0xae, 0xa7, 0x43, 0xff, 0x43, 0x92, 0x9e, 0x68, 0x07),
+
+        .characteristics = (struct ble_gatt_chr_def[]){
+            {
+                .uuid = BLE_UUID128_DECLARE(0x4f, 0x46, 0x90, 0x8f, 0x77, 0x46, 0x42, 0x9f, 0xa7, 0x5c, 0xcc, 0x71, 0x2e, 0x14, 0x59, 0xc9),
+
+                .access_cb = led_chr_access_cb,
+                .flags = BLE_GATT_CHR_F_WRITE, // write sem resposta chega
+            },
+            {0} // terminador
+        },
+    },
+    {0} // terminador de serviços
+};
+
+int gatt_svr_init(void)
+{
+    int rc;
+
+    // Inicializa serviços padrão
+    ble_svc_gap_init();
+    ble_svc_gatt_init();
+
+    // Conta e adiciona os teus serviços
+    rc = ble_gatts_count_cfg(gatt_svcs);
+    ESP_LOGI(TAG, "ble_gatts_count_cfg() rc=%d", rc);
+    if (rc != 0)
+    {
+        ESP_LOGE(TAG, "Erro count_cfg: %d", rc);
+        return rc;
+    }
+
+    rc = ble_gatts_add_svcs(gatt_svcs);
+    ESP_LOGI(TAG, "ble_gatts_add_svcs() rc=%d", rc);
+    if (rc != 0)
+    {
+        ESP_LOGE(TAG, "Erro add_svcs: %d", rc);
+        return rc;
+    }
+
+    ESP_LOGI(TAG, "GATT services registados OK!");
+    return 0;
+}
+
+/* Callback NimBLE quando o host está pronto */
+static void ble_on_sync(void)
+{
+    int rc = ble_hs_id_infer_auto(0, &own_addr_type);
+    if (rc != 0)
+    {
+        ESP_LOGE(TAG, "Address infer failed; rc=%d", rc);
+        return;
+    }
+    // NOVA PARTE: registar serviços GATT AQUI (após sync)
+    rc = gatt_svr_init();
+    if (rc != 0)
+    {
+        ESP_LOGE(TAG, "gatt_svr_init() falhou: %d", rc);
+        return;
+    }
+    // Nome do dispositivo
+    struct ble_hs_adv_fields fields;
+    memset(&fields, 0, sizeof(fields));
+    fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
+    const char *name = "DRAGSTER";
+    fields.name = (uint8_t *)name;
+    fields.name_len = strlen(name);
+    fields.name_is_complete = 1;
+
+    ble_gap_adv_set_fields(&fields);
+
+    // Parâmetros de advertising
+    struct ble_gap_adv_params adv_params;
+    memset(&adv_params, 0, sizeof(adv_params));
+    adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
+    adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
+
+    ESP_LOGI(TAG, "Starting advertising...");
+    ble_gap_adv_start(
+        own_addr_type,
+        NULL,
+        BLE_HS_FOREVER,
+        &adv_params,
+        NULL,
+        NULL);
+}
+
+/* Task principal NimBLE (corre o host) */
+static void host_task(void *param)
+{
+    ESP_LOGI(TAG, "NimBLE host task started");
+    nimble_port_run(); // Nunca retorna
+    nimble_port_freertos_deinit();
+}
+
+/* Inicialização NimBLE + FreeRTOS */
+static void ble_init(void)
+{
+    // NVS
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+
+    // A partir do IDF 5.x, o controller + HCI é feito dentro do nimble_port_init()
+    nimble_port_init(); // se isto falhar, retorna assert/log
+    // Serviços padrão GAP/GATT
+    // ble_svc_gap_init();
+    // ble_svc_gatt_init();
+
+    // Registar os teus serviços
+    int rc = ble_gatts_count_cfg(gatt_svcs);
+    assert(rc == 0);
+    rc = ble_gatts_add_svcs(gatt_svcs);
+    assert(rc == 0);
+    // Configurar callbacks NimBLE host
+    ble_hs_cfg.sync_cb = ble_on_sync;
+    ble_hs_cfg.reset_cb = NULL;
+
+    // Criar task FreeRTOS para o host NimBLE
+    nimble_port_freertos_init(host_task);
 }
