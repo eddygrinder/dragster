@@ -11,7 +11,6 @@
 #include "driver/ledc.h"    // PWM control
 #include "hal/ledc_types.h" // Tipos LEDC
 #include "esp_rom_gpio.h"   // esp_rom_gpio_pad_select_gpio()
-#include "blinkt.h"
 
 #include "nvs_flash.h"
 #include "esp_nimble_hci.h"
@@ -21,7 +20,8 @@
 #include "host/util/util.h"
 #include "host/ble_gap.h"
 
-#include "led_strip.h"
+#include "stripleds.h"
+
 #include "driver/rmt_tx.h"
 
 #include "host/ble_uuid.h"
@@ -33,10 +33,10 @@
 // ===============================
 
 // ----- Sensores QTR-8C -----
-#define S1_CHANNEL ADC_CHANNEL_3 ///< Sensor esquerdo (Amarelo, GPIO34)
-#define S2_CHANNEL ADC_CHANNEL_4 ///< Sensor central esquerdo (Castanho, GPIO35)
-#define S3_CHANNEL ADC_CHANNEL_5 ///< Sensor central direito (Cinzento, GPIO39)
-#define S4_CHANNEL ADC_CHANNEL_6 ///< Sensor direito (Castanho, GPIO33)
+#define S1_CHANNEL ADC_CHANNEL_4 ///< Sensor esquerdo (Amarelo, GPIO34)
+#define S2_CHANNEL ADC_CHANNEL_5 ///< Sensor central esquerdo (Castanho, GPIO35)
+#define S3_CHANNEL ADC_CHANNEL_6 ///< Sensor central direito (Cinzento, GPIO39)
+#define S4_CHANNEL ADC_CHANNEL_1 ///< Sensor direito (Castanho, GPIO33)
 
 // ----- Motores -----
 #define AIN1 17
@@ -54,11 +54,12 @@
 #define MOTOR_PWM_CHANNEL_ESQ LEDC_CHANNEL_0 ///< Canal PWM do motor esquerdo
 #define MOTOR_PWM_CHANNEL_DTA LEDC_CHANNEL_1 ///< Canal PWM do motor direito
 
-#define BTN_CAL 39 ///< GPIO do botão de calibração (substituir XX pelo GPIO real)
+#define BTN_CAL 48 ///< GPIO do botão de calibração
 #define RGB_LED_GPIO 38
 
+#include "led_strip.h"
+
 adc_oneshot_unit_handle_t adc1_handle; ///< Handle do ADC
-static led_strip_handle_t led;
 
 // ----- Botões -----
 bool calib_done = false; // Flag calibração
@@ -73,7 +74,7 @@ static uint8_t own_addr_type;
 // ------------------------------
 // PID / control parameters
 // ------------------------------
-float KP = 120.0f; // variável atualizável via BLE
+float KP = 130.0f; // variável atualizável via BLE
 
 // ===============================
 // Estruturas de dados
@@ -140,7 +141,7 @@ typedef enum
     WAIT_CALIB,  ///< Estado inicial: espera que o botão de calibração seja pressionado
     CALIBRATING, ///< Estado de calibração: calibra sensores QTR-8C, acontece apenas uma vez
     WAIT_START,  ///< Estado de espera pelo LED de arranque
-    RUN,          ///< Estado de execução: segue a linha utilizando os valores calibrados
+    RUN,         ///< Estado de execução: segue a linha utilizando os valores calibrados
 } robot_state_t;
 
 // ===============================
@@ -155,6 +156,8 @@ void app_main(void)
 
     // Inicializar RGB interno
     rgb_init();
+    // Inicializar fita de LEDs externa
+    strip_init();
     // Inicializar Bluetooth
     ble_init();
 
@@ -164,7 +167,7 @@ void app_main(void)
 
     esp_rom_gpio_pad_select_gpio(BTN_CAL);
     gpio_set_direction(BTN_CAL, GPIO_MODE_INPUT);
-    gpio_set_pull_mode(BTN_CAL, GPIO_PULLDOWN_ONLY);
+    gpio_set_pull_mode(BTN_CAL, GPIO_PULLUP_ONLY);
 
     // Motor A (esquerdo)
     esp_rom_gpio_pad_select_gpio(AIN1);
@@ -283,20 +286,6 @@ void controlTask(void *pvParameters)
 
     while (1)
     {
-        // Processa comando LED (ATÉ PRIMEIRO no loop)
-        if (led_command)
-        {
-            led_command = false;
-            if (led_value_new)
-            {
-                rgb_on();
-            }
-            else
-            {
-                rgb_off();
-            }
-            ESP_LOGI(TAG, "LED controlado por BLE: %d", led_value_new);
-        }
         switch (state)
         {
         case WAIT_CALIB:
@@ -307,7 +296,7 @@ void controlTask(void *pvParameters)
                 // Se já calibrado, pula direto para start
                 state = WAIT_START;
             }
-            else if (calib_button_pressed())
+            else if (!calib_button_pressed())
             {
                 state = CALIBRATING;
             }
@@ -317,7 +306,7 @@ void controlTask(void *pvParameters)
             motor_left_set(0);
             motor_right_set(0);
             limites = qtr_calibrate(sMin, sMax, duration_ms); // corre UMA VEZ
-            calib_done = true; // Marca calibração feita
+            calib_done = true;                                // Marca calibração feita
             state = WAIT_START;
             break;
 
@@ -361,13 +350,14 @@ void run_line_follower(int s1_min, int s1_max, int s2_min, int s2_max, int s3_mi
         line_position = calculaPosicao(s1_norm, s2_norm, s3_norm, s4_norm);
         motorControl(line_position);
 
-        if (raw[0] > limite_s1 && raw[3] > limite_s4)
+        if (raw[0] < 200 && raw[3] < 200)
         {
             // Para os motores
             motor_left_set(0);
             motor_right_set(0);
 
             printf("Prova terminada!\n");
+            strip_off();
         }
 
         // Esperar 1 ms antes da próxima leitura
@@ -485,10 +475,10 @@ LimitesPreto qtr_calibrate(int *sMin, int *sMax, uint32_t duration_ms) // Devolv
     LimitesPreto limites;
 
     // Inicializa Blinkt!
-    blinkt_init();  // Inicializa os pinos
-    blinkt_white(); // Acende todos os LEDs a branco
-
-    rgb_on(); // Acende LED de calibração
+    // blinkt_init();  // Inicializa os pinos
+    // blinkt_white(); // Acende todos os LEDs a branco
+    rgb_on();          // Acende LED de calibração
+    strip_set_color(); // Acende LED de calibração
 
     ESP_LOGI(TAG, "=== CALIBRACAO SENSORES ===");
     ESP_LOGI(TAG, "Move o Dragster lentamente sobre a linha e o fundo...");
@@ -571,32 +561,10 @@ bool start_led_detected(void)
     return true; // ou true, conforme precisares nos testes
 }
 
-void rgb_init(void)
-{
-    led_strip_config_t strip_config = {
-        .strip_gpio_num = RGB_LED_GPIO,
-        .max_leds = 1,
-        .led_pixel_format = LED_PIXEL_FORMAT_GRB,
-        .led_model = LED_MODEL_WS2812,
-    };
-
-    led_strip_rmt_config_t rmt_config = {
-        .resolution_hz = 10 * 1000 * 1000,
-    };
-
-    led_strip_new_rmt_device(&strip_config, &rmt_config, &led);
-    led_strip_clear(led); // começa desligado
-}
-
-void rgb_on(void)
-{
-    led_strip_set_pixel(led, 0, 50, 0, 0); // verde fraquinho
-    led_strip_refresh(led);
-}
-void rgb_off(void)
-{
-    led_strip_clear(led);
-}
+/**
+ * @brief Controlo do LED Verde RGB - Built-In
+ *
+ */
 
 /* Converte endereço BLE em string XX:XX:XX:XX:XX:XX */
 static void addr_to_str(const ble_addr_t *addr, char *str, size_t size)

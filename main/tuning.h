@@ -14,7 +14,7 @@ extern float KP;       ///< Ganho proporcional do controlador
 // ===============================
 // Motores (ajustável durante testes)
 // ===============================
-int BASE_SPEED = 950;   ///< Velocidade base dos motores (0 a 1023)
+int BASE_SPEED = 680;   ///< Velocidade base dos motores (0 a 1023)
 
 // ===============================
 // Sensores (constantes)
