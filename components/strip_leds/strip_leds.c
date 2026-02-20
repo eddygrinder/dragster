@@ -7,6 +7,7 @@
 
 #define LED_STRIP_GPIO 9
 #define STRIP_LED_NUM 8
+#define RGB_LED_GPIO 38
 
 static led_strip_handle_t led;
 static led_strip_handle_t led_strip;
