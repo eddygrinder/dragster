@@ -33,6 +33,15 @@ void qtr_init(void)
     adc_oneshot_config_channel(adc1_handle, S2_CHANNEL, &adc_config);
     adc_oneshot_config_channel(adc1_handle, S3_CHANNEL, &adc_config);
     adc_oneshot_config_channel(adc1_handle, S4_CHANNEL, &adc_config);
+    adc_oneshot_config_channel(adc1_handle, LED_CHANNEL, &adc_config); // Configura canal do LED 
+}
+
+int LED_START(void)
+{
+    int raw_led;
+    adc_oneshot_read(adc1_handle, LED_CHANNEL, &raw_led);
+    ESP_LOGI(TAG, "LED raw value: %d", raw_led);
+    return raw_led;
 }
 
 float calculaPosicao(float s1, float s2, float s3, float s4)
@@ -130,7 +139,7 @@ bool run_line_follower(void)
     if (raw[0] < 200 && raw[3] < 200)
     {
         // Para os motores
-        motors_stop();
+        motors_stop_progressive();
         printf("Prova terminada!\n");
         return true; // prova terminou
     }

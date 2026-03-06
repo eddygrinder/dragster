@@ -13,6 +13,9 @@
 #include "esp_rom_gpio.h"   // esp_rom_gpio_pad_select_gpio()
 
 #include "nvs_flash.h"
+#include "nvs.h"
+#include "esp_log.h"
+
 #include "esp_nimble_hci.h"
 #include "nimble/nimble_port.h"
 #include "nimble/nimble_port_freertos.h"
@@ -22,7 +25,6 @@
 
 #include "strip_leds.h"
 #include "motors_control.h"
-#include "tuning.h"
 #include "qtr_sensors.h"
 
 #include "driver/rmt_tx.h"
@@ -36,7 +38,6 @@
 // ===============================
 
 #define BTN_CAL 48 ///< GPIO do botão de calibração
-#define BTN_RUN 47 ///< GPIO do botão de arranque
 
 // ----- Botões -----
 bool calib_done = false; // Flag calibração
@@ -45,18 +46,13 @@ volatile bool led_command = false;
 volatile uint8_t led_value_new = 0;
 
 // Dente azul - Tag para logs
-static const char *TAG = "NIMBLE_SCAN";
 static uint8_t own_addr_type;
-
-// ------------------------------
-// PID / control parameters
-// ------------------------------
-volatile float KP_new = 150.0f;   // valor atualizado via BLE
-volatile bool KP_command = false; // flag para task principal
 
 // ===============================
 // Estruturas de dados
 // ===============================
+
+#define TAG "DRAGSTER"
 
 typedef struct
 {
@@ -77,16 +73,16 @@ TaskHandle_t lineFollowerTaskHandle;
 
 /// @brief Funções auxiliares
 bool calib_button_pressed(void);
-bool start_led_detected(void);
-bool test_button_pressed(void);
+// void LED_START(void);
 
 /// @brief Dente azul
 static void ble_init(void);
 static void host_task(void *param);
 static void ble_on_sync(void);
 int gatt_svr_init(void);
-static int led_chr_access_cb(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg);
-static void start_scan(void);
+static int kp_chr_access_cb(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg);
+static int base_speed_chr_access_cb(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg);
+// static void start_scan(void);
 static int gap_event_cb(struct ble_gap_event *event, void *arg);
 static void addr_to_str(const ble_addr_t *addr, char *str, size_t size);
 void ble_restart_advertising(void);
@@ -104,7 +100,6 @@ typedef enum
     CALIBRATING, ///< Estado de calibração: calibra sensores QTR-8C, acontece apenas uma vez
     WAIT_START,  ///< Estado de espera pelo LED de arranque
     RUN,         ///< Estado de execução: segue a linha utilizando os valores calibrados
-    POST_RUN     ///< Estado pós-prova: permite ajustes de KP via BLE antes do próximo teste
 } robot_state_t;
 
 /**
@@ -119,6 +114,11 @@ void app_main(void)
     strip_init();
     // Inicializar Bluetooth
     ble_init();
+
+    // Carregar os valores de KP e BASE_SPEED da NVS para a estrutura global de tuning
+    nvs_flash_init();
+    tuning_load();
+    tuning_print_saved(); // opcional: imprime os valores carregados para confirmação
 
     // -------------------------------
     // Configuração dos GPIOs de direção
@@ -151,9 +151,9 @@ void app_main(void)
         "LineFollowerTask",
         4096,
         NULL,
-        tskIDLE_PRIORITY + 5, // prioridade alta
+        tskIDLE_PRIORITY + 5,    // prioridade alta
         &lineFollowerTaskHandle, // guarda handle
-        1 // Core 1
+        1                        // Core 1
     );
 }
 
@@ -202,14 +202,14 @@ void controlTask(void *pvParameters)
     */
 
     // Assegura motores parados no início
-    motors_stop();
+    motors_stop_progressive();
 
     while (1)
     {
         switch (state)
         {
         case WAIT_CALIB:
-            motors_stop();
+            motors_stop_progressive();
             if (calib_done)
             {
                 // Se já calibrado, pula direto para start
@@ -223,19 +223,27 @@ void controlTask(void *pvParameters)
 
         case CALIBRATING:
             strip_set_color();
-            motors_stop();
+            motors_stop_progressive();
             qtr_calibrate(duration_ms); // corre UMA VEZ
             calib_done = true;          // Marca calibração feita
             state = WAIT_START;
             break;
 
         case WAIT_START:
-            motors_stop();
-            if (start_led_detected())
+            motors_stop_progressive();
+            tuning_print_saved(); // opcional: imprime os valores carregados para confirmação
+
+            if (LED_START() > 1000)        // Verifica se o valor do LED indica que está aceso
             {
-                vTaskDelay(pdMS_TO_TICKS(2000)); // Pequena espera antes de arrancar
+                if (ble_active)
+                {
+                    ble_gap_adv_stop(); // desliga o BLE antes de correr
+                    ble_active = false;
+                    ESP_LOGI(TAG, "BLE disabled before RUN");
+                }
                 state = RUN;
             }
+            vTaskDelay(pdMS_TO_TICKS(100));
             break;
 
         case RUN:
@@ -244,57 +252,17 @@ void controlTask(void *pvParameters)
 
             // Espera que a prova termine
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-            
-           // state = POST_RUN;
-            break;
 
-        case POST_RUN:
             // Liga o BLE se ainda não estiver ativo
             if (!ble_active)
             {
                 ble_restart_advertising(); // inicia advertising para KP
                 ble_active = true;
             }
-
-            // Atualiza KP via BLE se comando recebido
-            if (KP_command)
-            {
-                KP = KP_new; // atualizar KP para o próximo teste
-                ESP_LOGI(TAG, "KP received: %.2f", KP_new);
-                KP_command = false;
-            }
-
-            // Aguarda botão extra para iniciar próximo teste
-            if (test_button_pressed())
-            {
-                // Pausa o BLE apenas uma vez
-                if (ble_active)
-                {
-                    ble_gap_adv_stop();
-                    ble_gap_disc_cancel();
-                    ble_active = false;
-                }
-                state = RUN;
-            }
+            state = WAIT_START; // volta para esperar próximo teste
+            break;
         }
     }
-}
-
-bool test_button_pressed(void)
-{
-    static int last_btn_level = -1;      // guarda último estado do botão
-    int level = gpio_get_level(BTN_RUN); // lê GPIO atual
-
-    if (level != last_btn_level)
-    { // só loga se houver alteração
-        ESP_LOGI(TAG, "BTN_RUN = %d", level);
-        last_btn_level = level;
-    }
-
-    // **cede CPU para não disparar watchdog**
-    vTaskDelay(pdMS_TO_TICKS(10)); // ou taskYIELD()
-
-    return (level == 1); // devolve true se botão pressionado
 }
 
 /**
@@ -317,11 +285,6 @@ bool calib_button_pressed(void)
     vTaskDelay(pdMS_TO_TICKS(10)); // ou taskYIELD()
 
     return (level == 1); // devolve true se botão pressionado
-}
-
-bool start_led_detected(void)
-{
-    return true; // ou true, conforme precisares nos testes
 }
 
 /**
@@ -399,20 +362,40 @@ static void start_scan(void)
 }
 
 /* Callback chamado quando o cliente escreve na characteristic */
-static int led_chr_access_cb(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg)
+static int kp_chr_access_cb(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg)
 {
-    if (ctxt->op == BLE_GATT_ACCESS_OP_WRITE_CHR)
+    if (ctxt->op == BLE_GATT_ACCESS_OP_WRITE_CHR && ctxt->om->om_len >= 2)
     {
-        if (ctxt->om->om_len >= 2) // precisamos de 2 bytes
-        {
-            uint16_t raw = (ctxt->om->om_data[0] << 8) | ctxt->om->om_data[1]; // big-endian
-            KP_new = (float)raw;                                               // valor literal
-            KP_command = true;                                                 // sinaliza task principal
-            ESP_LOGI(TAG, "KP write received: %.2f", KP_new);
-        }
+        uint16_t raw = (ctxt->om->om_data[0] << 8) | ctxt->om->om_data[1];
+        tuning.KP = raw; // valor literal
+        ESP_LOGI(TAG, "KP updated: %d", tuning.KP);
+        tuning_save();        // grava imediatamente o novo valor na NVS para persistência entre testes
+        tuning_print_saved(); // opcional: imprime os valores salvos para confirmação
+    }
+    else if (ctxt->op == BLE_GATT_ACCESS_OP_READ_CHR)
+    {
+        // devolve o valor atual
+        uint8_t buf[2];
+        buf[0] = (tuning.KP >> 8) & 0xFF;
+        buf[1] = tuning.KP & 0xFF;
+        os_mbuf_append(ctxt->om, buf, 2);
     }
 
     return 0; // sucesso
+}
+
+// BASE_SPEED
+static int base_speed_chr_access_cb(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg)
+{
+    if (ctxt->op == BLE_GATT_ACCESS_OP_WRITE_CHR && ctxt->om->om_len >= 2)
+    {
+        uint16_t raw = (ctxt->om->om_data[0] << 8) | ctxt->om->om_data[1];
+        tuning.BASE_SPEED = raw; // valor literal
+        ESP_LOGI(TAG, "BASE_SPEED updated: %d", tuning.BASE_SPEED);
+        tuning_save();        // grava imediatamente o novo valor na NVS para persistência entre testes
+        tuning_print_saved(); // opcional: imprime os valores salvos para confirmação
+    }
+    return 0;
 }
 
 /* Tabela GATT com um serviço simples e characteristic LED */
@@ -426,8 +409,14 @@ static const struct ble_gatt_svc_def gatt_svcs[] = {
             {
                 .uuid = BLE_UUID128_DECLARE(0x4f, 0x46, 0x90, 0x8f, 0x77, 0x46, 0x42, 0x9f, 0xa7, 0x5c, 0xcc, 0x71, 0x2e, 0x14, 0x59, 0xc9),
 
-                .access_cb = led_chr_access_cb,
-                .flags = BLE_GATT_CHR_F_WRITE, // write sem resposta chega
+                .access_cb = kp_chr_access_cb,
+                .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_READ, // write sem resposta chega
+            },
+            {
+                // Characteristic BASE_SPEED
+                .uuid = BLE_UUID128_DECLARE(0x6a, 0x7b, 0x90, 0x8f, 0x77, 0x46, 0x42, 0x9f, 0xa7, 0x5c, 0xcc, 0x71, 0x2e, 0x14, 0x59, 0xca),
+                .access_cb = base_speed_chr_access_cb,
+                .flags = BLE_GATT_CHR_F_WRITE,
             },
             {0} // terminador
         },
@@ -586,6 +575,8 @@ static void motor_set(int pwm, int gpio_a, int gpio_b, ledc_channel_t channel)
 
 void motor_left_set(int pwm)  { motor_set(pwm, AIN1, AIN2, MOTOR_PWM_CHANNEL_ESQ); }
 void motor_right_set(int pwm) { motor_set(pwm, BIN1, BIN2, MOTOR_PWM_CHANNEL_DTA); }
+
+LED - GPIO
 
 
 */

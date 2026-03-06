@@ -1,5 +1,6 @@
 // motors_control.c
 #include <stdio.h>
+#include "freertos/FreeRTOS.h"
 #include "driver/gpio.h"  // GPIO_MODE_OUTPUT
 #include "driver/ledc.h"  // LEDC PWM
 #include "esp_rom_gpio.h" // esp_rom_gpio_pad_select_gpio()
@@ -21,6 +22,9 @@
 #define MAX_DUTY_CYCLE 1023                  ///< Ciclo máximo para 10-bit
 #define MOTOR_PWM_CHANNEL_ESQ LEDC_CHANNEL_0 ///< Canal PWM do motor esquerdo
 #define MOTOR_PWM_CHANNEL_DTA LEDC_CHANNEL_1 ///< Canal PWM do motor direito
+
+static int current_left_pwm = 0;
+static int current_right_pwm = 0;
 
 void motors_init(void)
 {
@@ -74,8 +78,10 @@ void motors_init(void)
     ledc_channel_config(&motorDTA);
 }
 
-static void motor_set(int pwm, int gpio_a, int gpio_b, ledc_channel_t channel)
+static void motor_set(int pwm, int gpio_a, int gpio_b, ledc_channel_t channel, int *current_pwm)
 {
+    *current_pwm = pwm; // guarda PWM atual
+
     if (pwm == 0)
     {
         gpio_set_level(gpio_a, 0);
@@ -107,10 +113,10 @@ static void motor_set(int pwm, int gpio_a, int gpio_b, ledc_channel_t channel)
 void motorControl(float line_position)
 {
     float erro = 0.0f - line_position; // queremos linha centrada = 0
-    float correcao = KP * erro;
+    float correcao = tuning.KP * erro;
 
-    int left_pwm = BASE_SPEED + correcao;
-    int right_pwm = BASE_SPEED - correcao;
+    int left_pwm = tuning.BASE_SPEED + correcao;
+    int right_pwm = tuning.BASE_SPEED - correcao;
 
     // Limitar o PWM para não ser negativo (coast) - não é necessário.
     if (left_pwm < 0)
@@ -118,17 +124,28 @@ void motorControl(float line_position)
     if (right_pwm < 0)
         right_pwm = 0;
 
-    motor_set(left_pwm, AIN1, AIN2, MOTOR_PWM_CHANNEL_ESQ);
-    motor_set(right_pwm, BIN1, BIN2, MOTOR_PWM_CHANNEL_DTA);
+    motor_set(left_pwm, AIN1, AIN2, MOTOR_PWM_CHANNEL_ESQ, &current_left_pwm);
+    motor_set(right_pwm, BIN1, BIN2, MOTOR_PWM_CHANNEL_DTA, &current_right_pwm);
 }
 
 void motors_set(int left_pwm, int right_pwm)
 {
-    motor_set(left_pwm, AIN1, AIN2, MOTOR_PWM_CHANNEL_ESQ);
-    motor_set(right_pwm, BIN1, BIN2, MOTOR_PWM_CHANNEL_DTA);
+    motor_set(left_pwm, AIN1, AIN2, MOTOR_PWM_CHANNEL_ESQ, &current_left_pwm);
+    motor_set(right_pwm, BIN1, BIN2, MOTOR_PWM_CHANNEL_DTA, &current_right_pwm);
 }
 
-void motors_stop(void)
+void motors_stop_progressive(void)
 {
+    // desliga motores (coast)
+    motors_set(0, 0);
+
+    // opcional: brake ativo curto
+    gpio_set_level(AIN1, 1);
+    gpio_set_level(AIN2, 1);
+    gpio_set_level(BIN1, 1);
+    gpio_set_level(BIN2, 1);
+    vTaskDelay(pdMS_TO_TICKS(SHORT_BRAKE_MS / 2)); // meio do tempo de short brake
+
+    // desliga motores (coast)
     motors_set(0, 0);
 }

@@ -2,15 +2,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// ===============================
-// PID (ajustável durante testes)
-// ===============================
-extern float KP;       ///< Ganho proporcional do controlador
-
-// ===============================
-// Motores (ajustável durante testes)
-// ===============================
-extern int BASE_SPEED; ///< Velocidade base dos motores (0 a 1023)
+// tempo do short brake em ms
+// Usado para manter os motores em curto (short brake) de forma contínua
+// durante a travagem rápida. Ajustar entre 120–500 ms conforme testes.
+// Valores menores apenas reduzem parte da velocidade; valores maiores
+// param quase totalmente o dragster dentro de 1 metro.
+#define SHORT_BRAKE_MS 500
 
 // ===============================
 // Sensores (constantes)
@@ -24,3 +21,20 @@ extern int BASE_SPEED; ///< Velocidade base dos motores (0 a 1023)
 // ===============================
 #define LOOP_DELAY_MS        10          ///< Delay do loop principal em ms
 #define CALIBRATION_TIME_MS  5000        ///< Duração da calibração em ms
+
+// -------------------------------
+// Protótipos de funções de tuning - KP e BASE_SPEED
+// -------------------------------
+
+void tuning_load();
+void tuning_save();
+void tuning_print_saved();
+
+// Estrutura de parâmetros de controlo - KP e BASE_SPEED
+typedef struct
+{
+    int KP;         // valor literal
+    int BASE_SPEED; // valor literal
+} tuning_t;
+
+extern tuning_t tuning;  // apenas declaração

@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "Dragster",
-    "project_version":    "91eea28-dirty",
+    "project_version":    "47ec1af-dirty",
     "project_path":       "C:/Users/ADMIN/Documents/GitHub/dragster",
     "idf_path":           "C:/Users/ADMIN/esp/v5.5.2/esp-idf",
     "build_dir":          "C:/Users/ADMIN/Documents/GitHub/dragster/build",
