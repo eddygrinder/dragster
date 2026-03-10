@@ -7,7 +7,7 @@
 // durante a travagem rápida. Ajustar entre 120–500 ms conforme testes.
 // Valores menores apenas reduzem parte da velocidade; valores maiores
 // param quase totalmente o dragster dentro de 1 metro.
-#define SHORT_BRAKE_MS 500
+#define SHORT_BRAKE_MS 2000
 
 // ===============================
 // Sensores (constantes)

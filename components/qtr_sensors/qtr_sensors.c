@@ -137,7 +137,7 @@ bool run_line_follower(void)
     adc_oneshot_read(adc1_handle, S3_CHANNEL, &raw[2]);
     adc_oneshot_read(adc1_handle, S4_CHANNEL, &raw[3]);
     
-    if (raw[0] < 200 && raw[3] < 200)
+    if ((raw[1] < 200 && raw[2] < 200) || (raw[0] > 1000 && raw[3] > 1000))
     {
         // Para os motores
         braking_short_brake();

@@ -3,6 +3,24 @@
 #include <stdint.h>
 #include "driver/ledc.h" // ledc_channel_t
 
+// ----- Motores -----
+#define AIN1 17 // Enable do motor esquerdo (PWM)
+#define AIN2 16
+#define PWM1 15 
+#define BIN1 40 // Enable do motor direito (PWM)
+#define BIN2 41
+#define PWM2 42 
+
+#define MOTOR_PWM_FREQ 20000 ///< Frequência PWM (Hz)
+#define MOTOR_PWM_MODE LEDC_LOW_SPEED_MODE
+#define MOTOR_PWM_TIMER LEDC_TIMER_0
+#define MOTOR_PWM_RES LEDC_TIMER_10_BIT      ///< Resolução PWM (10-bit)
+#define MAX_DUTY_CYCLE 1023                  ///< Ciclo máximo para 10-bit
+#define MOTOR_PWM_CHANNEL_ESQ LEDC_CHANNEL_0 ///< Canal PWM do motor esquerdo
+#define MOTOR_PWM_CHANNEL_DTA LEDC_CHANNEL_1 ///< Canal PWM do motor direito
+#define MOTOR_PWM_CHANNEL_ESQ_BRAKE LEDC_CHANNEL_2
+#define MOTOR_PWM_CHANNEL_DTA_BRAKE LEDC_CHANNEL_3
+
 /**
  * @brief Ajusta os motores esquerdo e direito com base na posição da linha.
  *

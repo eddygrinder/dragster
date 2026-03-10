@@ -7,22 +7,6 @@
 #include "motors_control.h"
 #include "tuning.h" // para acessar tuning.KP e tuning.BASE_SPEED
 
-// ----- Motores -----
-#define AIN1 17
-#define AIN2 16
-#define PWM1 15
-#define BIN1 40
-#define BIN2 41
-#define PWM2 42
-
-#define MOTOR_PWM_FREQ 20000 ///< Frequência PWM (Hz)
-#define MOTOR_PWM_MODE LEDC_LOW_SPEED_MODE
-#define MOTOR_PWM_TIMER LEDC_TIMER_0
-#define MOTOR_PWM_RES LEDC_TIMER_10_BIT      ///< Resolução PWM (10-bit)
-#define MAX_DUTY_CYCLE 1023                  ///< Ciclo máximo para 10-bit
-#define MOTOR_PWM_CHANNEL_ESQ LEDC_CHANNEL_0 ///< Canal PWM do motor esquerdo
-#define MOTOR_PWM_CHANNEL_DTA LEDC_CHANNEL_1 ///< Canal PWM do motor direito
-
 static int current_left_pwm = 0;
 static int current_right_pwm = 0;
 
@@ -47,6 +31,26 @@ void motors_init(void)
     // -------------------------------
     // 2) Configuração do PWM (LEDC)
     // -------------------------------
+
+    // Canal PWM travagem (LPWM)
+    ledc_channel_config_t motorESQ_brake = {
+        .gpio_num = AIN2, // GPIO16
+        .speed_mode = MOTOR_PWM_MODE,
+        .channel = LEDC_CHANNEL_2, // canal novo
+        .timer_sel = MOTOR_PWM_TIMER,
+        .duty = 0,
+        .hpoint = 0};
+    ledc_channel_config(&motorESQ_brake);
+
+    // Canal PWM travagem direito
+    ledc_channel_config_t motorDTA_brake = {
+        .gpio_num = BIN2,
+        .speed_mode = MOTOR_PWM_MODE,
+        .channel = MOTOR_PWM_CHANNEL_DTA_BRAKE,
+        .timer_sel = MOTOR_PWM_TIMER,
+        .duty = 0,
+        .hpoint = 0};
+    ledc_channel_config(&motorDTA_brake);
 
     // Timer PWM
     ledc_timer_config_t pwm_timer = {
@@ -112,11 +116,17 @@ static void motor_set(int pwm, int gpio_a, int gpio_b, ledc_channel_t channel, i
 
 void motorControl(float line_position)
 {
+    // Garante travagem desligada
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE, 0);
+    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE);
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE, 0);
+    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE);
+
     float erro = 0.0f - line_position; // queremos linha centrada = 0
     float correcao = tuning.KP * erro;
 
-    int left_pwm = tuning.BASE_SPEED + correcao;
-    int right_pwm = tuning.BASE_SPEED - correcao;
+    int left_pwm = tuning.BASE_SPEED - correcao;
+    int right_pwm = tuning.BASE_SPEED + correcao;
 
     // Limitar o PWM para não ser negativo (coast) - não é necessário.
     if (left_pwm < 0)
@@ -136,16 +146,27 @@ void motors_set(int left_pwm, int right_pwm)
 
 void motors_stop_fast(void)
 {
-    // desliga motores (coast)
-    motors_set(0, 0);
+    int brake_pwm = MAX_DUTY_CYCLE / 2; // 50% — ajusta em tuning.h
 
-    // opcional: brake ativo curto
-    gpio_set_level(AIN1, 1);
-    gpio_set_level(AIN2, 1);
-    gpio_set_level(BIN1, 1);
-    gpio_set_level(BIN2, 1);
-    vTaskDelay(pdMS_TO_TICKS(SHORT_BRAKE_MS)); // meio do tempo de short brake
+    // 1. Corta PWM de frente
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ, 0);
+    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ);
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA, 0);
+    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA);
 
-    // desliga motores (coast)
+    // 2. Aplica PWM de travagem no LPWM
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE, brake_pwm);
+    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE);
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE, brake_pwm);
+    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE);
+
+    vTaskDelay(pdMS_TO_TICKS(SHORT_BRAKE_MS));
+
+    // 3. Coast final
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE, 0);
+    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE);
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE, 0);
+    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE);
+
     motors_set(0, 0);
 }

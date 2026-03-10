@@ -3,10 +3,10 @@
 #include "esp_log.h"
 
 // ----- Sensores QTR-8C -----
-#define S1_CHANNEL ADC_CHANNEL_4 ///< Sensor esquerdo (Amarelo, GPIO34)
-#define S2_CHANNEL ADC_CHANNEL_5 ///< Sensor central esquerdo (Castanho, GPIO35)
-#define S3_CHANNEL ADC_CHANNEL_6 ///< Sensor central direito (Cinzento, GPIO39)
-#define S4_CHANNEL ADC_CHANNEL_1 ///< Sensor direito (Castanho, GPIO33)
+#define S1_CHANNEL ADC_CHANNEL_4 ///< Sensor esquerdo (Amarelo, GPIO5)
+#define S2_CHANNEL ADC_CHANNEL_5 ///< Sensor central esquerdo (Castanho, GPIO6)
+#define S3_CHANNEL ADC_CHANNEL_6 ///< Sensor central direito (Cinzento, GPIO7)
+#define S4_CHANNEL ADC_CHANNEL_1 ///< Sensor direito (Castanho, GPIO2)
 #define LED_CHANNEL ADC_CHANNEL_7 ///< Sensor do LED (Branco, GPIO8)
 
 // Limites de preto
