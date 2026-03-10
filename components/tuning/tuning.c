@@ -6,7 +6,9 @@
 // Instância global
 tuning_t tuning = {
     .KP = 40,
-    .BASE_SPEED = 180};
+    .BASE_SPEED = 580,
+    .BRAKE_DISTANCE_TICKS = 0 // valor inicial
+};
 
 void tuning_load()
 {
@@ -18,6 +20,8 @@ void tuning_load()
             tuning.KP = val;
         if (nvs_get_i32(handle, "speed", &val) == ESP_OK)
             tuning.BASE_SPEED = val;
+        if (nvs_get_i32(handle, "brake_ticks", &val) == ESP_OK) // nova leitura para BRAKE_DISTANCE_TICKS
+            tuning.BRAKE_DISTANCE_TICKS = val;
         nvs_close(handle);
     }
 }
@@ -29,6 +33,7 @@ void tuning_save()
     {
         nvs_set_i32(handle, "kp", tuning.KP);
         nvs_set_i32(handle, "speed", tuning.BASE_SPEED);
+        nvs_set_i32(handle, "brake_ticks", tuning.BRAKE_DISTANCE_TICKS); // BRAKE_DISTANCE_TICKS
         nvs_commit(handle);
         nvs_close(handle);
     }

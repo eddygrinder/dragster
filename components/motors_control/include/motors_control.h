@@ -12,5 +12,5 @@ void motors_init(void);   // nova função
 void motorControl(float line_position);
 //static void motor_set(int pwm, int gpio_a, int gpio_b, ledc_channel_t channel);
 void motors_set(int left_pwm, int right_pwm);
-void motors_stop_progressive(void);
+void motors_stop_fast(void);
 

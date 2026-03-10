@@ -5,7 +5,7 @@
 #include "driver/ledc.h"  // LEDC PWM
 #include "esp_rom_gpio.h" // esp_rom_gpio_pad_select_gpio()
 #include "motors_control.h"
-#include "tuning.h"
+#include "tuning.h" // para acessar tuning.KP e tuning.BASE_SPEED
 
 // ----- Motores -----
 #define AIN1 17
@@ -134,7 +134,7 @@ void motors_set(int left_pwm, int right_pwm)
     motor_set(right_pwm, BIN1, BIN2, MOTOR_PWM_CHANNEL_DTA, &current_right_pwm);
 }
 
-void motors_stop_progressive(void)
+void motors_stop_fast(void)
 {
     // desliga motores (coast)
     motors_set(0, 0);
@@ -144,7 +144,7 @@ void motors_stop_progressive(void)
     gpio_set_level(AIN2, 1);
     gpio_set_level(BIN1, 1);
     gpio_set_level(BIN2, 1);
-    vTaskDelay(pdMS_TO_TICKS(SHORT_BRAKE_MS / 2)); // meio do tempo de short brake
+    vTaskDelay(pdMS_TO_TICKS(SHORT_BRAKE_MS)); // meio do tempo de short brake
 
     // desliga motores (coast)
     motors_set(0, 0);

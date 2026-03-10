@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "Dragster",
-    "project_version":    "47ec1af-dirty",
+    "project_version":    "6683925-dirty",
     "project_path":       "C:/Users/ADMIN/Documents/GitHub/dragster",
     "idf_path":           "C:/Users/ADMIN/esp/v5.5.2/esp-idf",
     "build_dir":          "C:/Users/ADMIN/Documents/GitHub/dragster/build",
@@ -25,8 +25,8 @@
         "COMPONENT_KCONFIGS_PROJBUILD" : "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader/Kconfig.projbuild;C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_app_format/Kconfig.projbuild;C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_rom/Kconfig.projbuild;C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esptool_py/Kconfig.projbuild;C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/partition_table/Kconfig.projbuild;C:/Users/ADMIN/Documents/GitHub/dragster/managed_components/78__esp-builtin-led/Kconfig.projbuild"
     },
     "common_component_reqs": [ "cxx", "newlib", "freertos", "esp_hw_support", "heap", "log", "soc", "hal", "esp_rom", "esp_common", "esp_system", "xtensa" ],
-    "build_components" : [ "78__esp-builtin-led", "app_update", "bootloader", "bootloader_support", "bt", "cxx", "driver", "efuse", "esp_adc", "esp_app_format", "esp_bootloader_format", "esp_coex", "esp_common", "esp_driver_ana_cmpr", "esp_driver_bitscrambler", "esp_driver_dac", "esp_driver_gpio", "esp_driver_gptimer", "esp_driver_i2c", "esp_driver_i2s", "esp_driver_ledc", "esp_driver_mcpwm", "esp_driver_parlio", "esp_driver_pcnt", "esp_driver_rmt", "esp_driver_sdio", "esp_driver_sdm", "esp_driver_sdmmc", "esp_driver_sdspi", "esp_driver_spi", "esp_driver_tsens", "esp_driver_twai", "esp_driver_uart", "esp_driver_usb_serial_jtag", "esp_event", "esp_gdbstub", "esp_hw_support", "esp_mm", "esp_netif", "esp_netif_stack", "esp_partition", "esp_phy", "esp_pm", "esp_ringbuf", "esp_rom", "esp_security", "esp_system", "esp_timer", "esp_vfs_console", "esp_wifi", "espressif__led_strip", "esptool_py", "freertos", "hal", "heap", "log", "lwip", "main", "mbedtls", "motors_control", "newlib", "nvs_flash", "partition_table", "pthread", "qtr_sensors", "sdmmc", "soc", "spi_flash", "strip_leds", "vfs", "wpa_supplicant", "xtensa", "" ],
-    "build_component_paths" : [ "C:/Users/ADMIN/Documents/GitHub/dragster/managed_components/78__esp-builtin-led", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/app_update", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader_support", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bt", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/cxx", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/driver", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/efuse", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_adc", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_app_format", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_bootloader_format", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_coex", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_common", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_ana_cmpr", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_bitscrambler", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_dac", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_gpio", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_gptimer", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_i2c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_i2s", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_ledc", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_mcpwm", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_parlio", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_pcnt", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_rmt", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_sdio", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_sdm", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_sdmmc", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_sdspi", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_spi", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_tsens", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_twai", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_uart", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_usb_serial_jtag", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_event", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_gdbstub", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_hw_support", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_mm", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_netif", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_netif_stack", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_partition", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_phy", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_pm", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_ringbuf", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_rom", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_security", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_system", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_timer", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_vfs_console", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_wifi", "C:/Users/ADMIN/Documents/GitHub/dragster/managed_components/espressif__led_strip", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esptool_py", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/freertos", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/hal", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/heap", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/log", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/lwip", "C:/Users/ADMIN/Documents/GitHub/dragster/main", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/mbedtls", "C:/Users/ADMIN/Documents/GitHub/dragster/components/motors_control", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/newlib", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/nvs_flash", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/partition_table", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/pthread", "C:/Users/ADMIN/Documents/GitHub/dragster/components/qtr_sensors", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/sdmmc", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/soc", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/spi_flash", "C:/Users/ADMIN/Documents/GitHub/dragster/components/strip_leds", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/vfs", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/wpa_supplicant", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/xtensa", "" ],
+    "build_components" : [ "78__esp-builtin-led", "app_update", "bootloader", "bootloader_support", "braking", "bt", "cxx", "driver", "efuse", "encoders", "esp_adc", "esp_app_format", "esp_bootloader_format", "esp_coex", "esp_common", "esp_driver_ana_cmpr", "esp_driver_bitscrambler", "esp_driver_dac", "esp_driver_gpio", "esp_driver_gptimer", "esp_driver_i2c", "esp_driver_i2s", "esp_driver_ledc", "esp_driver_mcpwm", "esp_driver_parlio", "esp_driver_pcnt", "esp_driver_rmt", "esp_driver_sdio", "esp_driver_sdm", "esp_driver_sdmmc", "esp_driver_sdspi", "esp_driver_spi", "esp_driver_tsens", "esp_driver_twai", "esp_driver_uart", "esp_driver_usb_serial_jtag", "esp_event", "esp_gdbstub", "esp_hw_support", "esp_mm", "esp_netif", "esp_netif_stack", "esp_partition", "esp_phy", "esp_pm", "esp_ringbuf", "esp_rom", "esp_security", "esp_system", "esp_timer", "esp_vfs_console", "esp_wifi", "espressif__led_strip", "esptool_py", "freertos", "hal", "heap", "log", "lwip", "main", "mbedtls", "motors_control", "newlib", "nvs_flash", "partition_table", "pthread", "qtr_sensors", "sdmmc", "soc", "spi_flash", "strip_leds", "tuning", "vfs", "wpa_supplicant", "xtensa", "" ],
+    "build_component_paths" : [ "C:/Users/ADMIN/Documents/GitHub/dragster/managed_components/78__esp-builtin-led", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/app_update", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader_support", "C:/Users/ADMIN/Documents/GitHub/dragster/components/braking", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bt", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/cxx", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/driver", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/efuse", "C:/Users/ADMIN/Documents/GitHub/dragster/components/encoders", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_adc", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_app_format", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_bootloader_format", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_coex", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_common", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_ana_cmpr", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_bitscrambler", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_dac", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_gpio", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_gptimer", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_i2c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_i2s", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_ledc", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_mcpwm", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_parlio", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_pcnt", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_rmt", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_sdio", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_sdm", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_sdmmc", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_sdspi", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_spi", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_tsens", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_twai", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_uart", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_driver_usb_serial_jtag", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_event", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_gdbstub", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_hw_support", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_mm", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_netif", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_netif_stack", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_partition", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_phy", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_pm", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_ringbuf", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_rom", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_security", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_system", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_timer", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_vfs_console", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esp_wifi", "C:/Users/ADMIN/Documents/GitHub/dragster/managed_components/espressif__led_strip", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/esptool_py", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/freertos", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/hal", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/heap", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/log", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/lwip", "C:/Users/ADMIN/Documents/GitHub/dragster/main", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/mbedtls", "C:/Users/ADMIN/Documents/GitHub/dragster/components/motors_control", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/newlib", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/nvs_flash", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/partition_table", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/pthread", "C:/Users/ADMIN/Documents/GitHub/dragster/components/qtr_sensors", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/sdmmc", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/soc", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/spi_flash", "C:/Users/ADMIN/Documents/GitHub/dragster/components/strip_leds", "C:/Users/ADMIN/Documents/GitHub/dragster/components/tuning", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/vfs", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/wpa_supplicant", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/xtensa", "" ],
     "build_component_info" : {
         "78__esp-builtin-led": {
             "alias": "idf::78__esp-builtin-led",
@@ -88,6 +88,21 @@
             "sources": [ "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader_support/src/bootloader_common.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader_support/src/bootloader_common_loader.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader_support/src/bootloader_clock_init.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader_support/src/bootloader_mem.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader_support/src/bootloader_random.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader_support/src/bootloader_efuse.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader_support/src/flash_encrypt.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader_support/src/secure_boot.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader_support/src/bootloader_random_esp32s3.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader_support/bootloader_flash/src/bootloader_flash.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader_support/bootloader_flash/src/flash_qio_mode.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader_support/bootloader_flash/src/bootloader_flash_config_esp32s3.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader_support/src/bootloader_utility.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader_support/src/flash_partitions.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader_support/src/esp_image_format.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader_support/src/bootloader_sha.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/bootloader_support/src/esp32s3/secure_boot_secure_features.c" ],
             "include_dirs": [ "include", "bootloader_flash/include" ]
         },
+        "braking": {
+            "alias": "idf::braking",
+            "target": "___idf_braking",
+            "prefix": "idf",
+            "dir": "C:/Users/ADMIN/Documents/GitHub/dragster/components/braking",
+            "type": "LIBRARY",
+            "lib": "__idf_braking",
+            "reqs": [],
+            "priv_reqs": [ "main", "driver", "freertos", "encoders", "tuning", "motors_control" ],
+            "managed_reqs": [],
+            "managed_priv_reqs": [],
+            "file": "C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/braking/libbraking.a",
+            "sources": [ "C:/Users/ADMIN/Documents/GitHub/dragster/components/braking/braking.c" ],
+            "include_dirs": [ "include" ]
+        },
         "bt": {
             "alias": "idf::bt",
             "target": "___idf_bt",
@@ -147,6 +162,21 @@
             "file": "C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/efuse/libefuse.a",
             "sources": [ "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/efuse/esp32s3/esp_efuse_table.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/efuse/esp32s3/esp_efuse_fields.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/efuse/esp32s3/esp_efuse_rtc_calib.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/efuse/esp32s3/esp_efuse_utility.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/efuse/src/esp_efuse_api.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/efuse/src/esp_efuse_fields.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/efuse/src/esp_efuse_utility.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/efuse/src/efuse_controller/keys/with_key_purposes/esp_efuse_api_key.c", "C:/Users/ADMIN/esp/v5.5.2/esp-idf/components/efuse/src/esp_efuse_startup.c" ],
             "include_dirs": [ "include", "esp32s3/include" ]
+        },
+        "encoders": {
+            "alias": "idf::encoders",
+            "target": "___idf_encoders",
+            "prefix": "idf",
+            "dir": "C:/Users/ADMIN/Documents/GitHub/dragster/components/encoders",
+            "type": "LIBRARY",
+            "lib": "__idf_encoders",
+            "reqs": [],
+            "priv_reqs": [ "main", "driver", "freertos" ],
+            "managed_reqs": [],
+            "managed_priv_reqs": [],
+            "file": "C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/encoders/libencoders.a",
+            "sources": [ "C:/Users/ADMIN/Documents/GitHub/dragster/components/encoders/encoders.c" ],
+            "include_dirs": [ "include" ]
         },
         "esp_adc": {
             "alias": "idf::esp_adc",
@@ -890,12 +920,12 @@
             "dir": "C:/Users/ADMIN/Documents/GitHub/dragster/main",
             "type": "LIBRARY",
             "lib": "__idf_main",
-            "reqs": [ "bt", "nvs_flash" ],
-            "priv_reqs": [ "qtr_sensors", "motors_control", "strip_leds", "esp_adc", "driver", "spi_flash", "freertos", "78__esp-builtin-led" ],
+            "reqs": [ "bt" ],
+            "priv_reqs": [ "qtr_sensors", "motors_control", "tuning", "encoders", "strip_leds", "esp_adc", "driver", "spi_flash", "freertos", "braking", "78__esp-builtin-led" ],
             "managed_reqs": [],
             "managed_priv_reqs": [ "78__esp-builtin-led" ],
             "file": "C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/main/libmain.a",
-            "sources": [ "C:/Users/ADMIN/Documents/GitHub/dragster/main/Dragster.c", "C:/Users/ADMIN/Documents/GitHub/dragster/main/tuning.c" ],
+            "sources": [ "C:/Users/ADMIN/Documents/GitHub/dragster/main/Dragster.c" ],
             "include_dirs": [ "." ]
         },
         "mbedtls": {
@@ -921,7 +951,7 @@
             "type": "LIBRARY",
             "lib": "__idf_motors_control",
             "reqs": [],
-            "priv_reqs": [ "main", "driver", "freertos" ],
+            "priv_reqs": [ "main", "driver", "tuning", "freertos" ],
             "managed_reqs": [],
             "managed_priv_reqs": [],
             "file": "C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/motors_control/libmotors_control.a",
@@ -996,12 +1026,12 @@
             "type": "LIBRARY",
             "lib": "__idf_qtr_sensors",
             "reqs": [],
-            "priv_reqs": [ "main", "driver", "freertos", "strip_leds", "esp_adc", "motors_control" ],
+            "priv_reqs": [ "main", "driver", "freertos", "strip_leds", "tuning", "esp_adc", "motors_control", "encoders" ],
             "managed_reqs": [],
             "managed_priv_reqs": [],
             "file": "C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/qtr_sensors/libqtr_sensors.a",
-            "sources": [ "C:/Users/ADMIN/Documents/GitHub/dragster/components/qtr_sensors/qtr_sensors.c" ],
-            "include_dirs": [ "include" ]
+            "sources": [ "C:/Users/ADMIN/Documents/GitHub/dragster/components/qtr_sensors/qtr_sensors.c", "C:/Users/ADMIN/Documents/GitHub/dragster/components/braking/braking.c" ],
+            "include_dirs": [ "include", "../braking/include" ]
         },
         "sdmmc": {
             "alias": "idf::sdmmc",
@@ -1061,6 +1091,21 @@
             "managed_priv_reqs": [],
             "file": "C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/strip_leds/libstrip_leds.a",
             "sources": [ "C:/Users/ADMIN/Documents/GitHub/dragster/components/strip_leds/strip_leds.c" ],
+            "include_dirs": [ "include" ]
+        },
+        "tuning": {
+            "alias": "idf::tuning",
+            "target": "___idf_tuning",
+            "prefix": "idf",
+            "dir": "C:/Users/ADMIN/Documents/GitHub/dragster/components/tuning",
+            "type": "LIBRARY",
+            "lib": "__idf_tuning",
+            "reqs": [ "nvs_flash" ],
+            "priv_reqs": [ "driver", "freertos", "espressif__led_strip" ],
+            "managed_reqs": [],
+            "managed_priv_reqs": [],
+            "file": "C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/tuning/libtuning.a",
+            "sources": [ "C:/Users/ADMIN/Documents/GitHub/dragster/components/tuning/tuning.c" ],
             "include_dirs": [ "include" ]
         },
         "vfs": {
@@ -2412,11 +2457,35 @@
             "prefix": "idf",
             "dir": "C:/Users/ADMIN/Documents/GitHub/dragster/main",
             "lib": "__idf_main",
-            "reqs": [ "bt", "nvs_flash" ],
-            "priv_reqs": [ "qtr_sensors", "motors_control", "strip_leds", "esp_adc", "driver", "spi_flash", "freertos", "78__esp-builtin-led" ],
+            "reqs": [ "bt" ],
+            "priv_reqs": [ "qtr_sensors", "motors_control", "tuning", "encoders", "strip_leds", "esp_adc", "driver", "spi_flash", "freertos", "braking", "78__esp-builtin-led" ],
             "managed_reqs": [],
             "managed_priv_reqs": [ "78__esp-builtin-led" ],
             "include_dirs": [ "." ]
+        },
+        "braking": {
+            "alias": "idf::braking",
+            "target": "___idf_braking",
+            "prefix": "idf",
+            "dir": "C:/Users/ADMIN/Documents/GitHub/dragster/components/braking",
+            "lib": "__idf_braking",
+            "reqs": [],
+            "priv_reqs": [ "main", "driver", "freertos", "encoders", "tuning", "motors_control" ],
+            "managed_reqs": [],
+            "managed_priv_reqs": [],
+            "include_dirs": [ "include" ]
+        },
+        "encoders": {
+            "alias": "idf::encoders",
+            "target": "___idf_encoders",
+            "prefix": "idf",
+            "dir": "C:/Users/ADMIN/Documents/GitHub/dragster/components/encoders",
+            "lib": "__idf_encoders",
+            "reqs": [],
+            "priv_reqs": [ "main", "driver", "freertos" ],
+            "managed_reqs": [],
+            "managed_priv_reqs": [],
+            "include_dirs": [ "include" ]
         },
         "motors_control": {
             "alias": "idf::motors_control",
@@ -2425,7 +2494,7 @@
             "dir": "C:/Users/ADMIN/Documents/GitHub/dragster/components/motors_control",
             "lib": "__idf_motors_control",
             "reqs": [],
-            "priv_reqs": [ "main", "driver", "freertos" ],
+            "priv_reqs": [ "main", "driver", "tuning", "freertos" ],
             "managed_reqs": [],
             "managed_priv_reqs": [],
             "include_dirs": [ "include" ]
@@ -2437,10 +2506,10 @@
             "dir": "C:/Users/ADMIN/Documents/GitHub/dragster/components/qtr_sensors",
             "lib": "__idf_qtr_sensors",
             "reqs": [],
-            "priv_reqs": [ "main", "driver", "freertos", "strip_leds", "esp_adc", "motors_control" ],
+            "priv_reqs": [ "main", "driver", "freertos", "strip_leds", "tuning", "esp_adc", "motors_control", "encoders" ],
             "managed_reqs": [],
             "managed_priv_reqs": [],
-            "include_dirs": [ "include" ]
+            "include_dirs": [ "include", "../braking/include" ]
         },
         "strip_leds": {
             "alias": "idf::strip_leds",
@@ -2449,6 +2518,18 @@
             "dir": "C:/Users/ADMIN/Documents/GitHub/dragster/components/strip_leds",
             "lib": "__idf_strip_leds",
             "reqs": [],
+            "priv_reqs": [ "driver", "freertos", "espressif__led_strip" ],
+            "managed_reqs": [],
+            "managed_priv_reqs": [],
+            "include_dirs": [ "include" ]
+        },
+        "tuning": {
+            "alias": "idf::tuning",
+            "target": "___idf_tuning",
+            "prefix": "idf",
+            "dir": "C:/Users/ADMIN/Documents/GitHub/dragster/components/tuning",
+            "lib": "__idf_tuning",
+            "reqs": [ "nvs_flash" ],
             "priv_reqs": [ "driver", "freertos", "espressif__led_strip" ],
             "managed_reqs": [],
             "managed_priv_reqs": [],

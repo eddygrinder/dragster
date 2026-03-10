@@ -2,7 +2,6 @@
 // Includes principais
 // ===============================
 #include <stdio.h>
-#include "tuning.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -11,6 +10,7 @@
 #include "driver/ledc.h"    // PWM control
 #include "hal/ledc_types.h" // Tipos LEDC
 #include "esp_rom_gpio.h"   // esp_rom_gpio_pad_select_gpio()
+#include "tuning.h"         // Configurações de tuning e NVS
 
 #include "nvs_flash.h"
 #include "nvs.h"
@@ -33,13 +33,15 @@
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
 
+#include "encoders.h"
+
 // ===============================
 // Definições de hardware
 // ===============================
 
 #define BTN_CAL 48 ///< GPIO do botão de calibração
 
-// ----- Botões -----
+// ----- Botões -----y
 bool calib_done = false; // Flag calibração
 
 volatile bool led_command = false;
@@ -68,8 +70,10 @@ volatile SensorValues sensors; ///< Valores atuais dos sensores
 /// @brief Task principal de controlo do robô
 void controlTask(void *pvParameters);
 void runfollowerTask(void *pvParameters);
+void encoderTestTask(void *pvParameters);
 TaskHandle_t controlTaskHandle;
 TaskHandle_t lineFollowerTaskHandle;
+TaskHandle_t encoderTaskHandle;
 
 /// @brief Funções auxiliares
 bool calib_button_pressed(void);
@@ -82,9 +86,6 @@ static void ble_on_sync(void);
 int gatt_svr_init(void);
 static int kp_chr_access_cb(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg);
 static int base_speed_chr_access_cb(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg);
-// static void start_scan(void);
-static int gap_event_cb(struct ble_gap_event *event, void *arg);
-static void addr_to_str(const ble_addr_t *addr, char *str, size_t size);
 void ble_restart_advertising(void);
 
 /// @brief Estados possíveis do robô durante a prova
@@ -119,6 +120,8 @@ void app_main(void)
     nvs_flash_init();
     tuning_load();
     tuning_print_saved(); // opcional: imprime os valores carregados para confirmação
+
+    encoder_init(); // Configura o GPIO do encoder e a ISR para contagem de ticks
 
     // -------------------------------
     // Configuração dos GPIOs de direção
@@ -155,6 +158,37 @@ void app_main(void)
         &lineFollowerTaskHandle, // guarda handle
         1                        // Core 1
     );
+
+    xTaskCreatePinnedToCore(
+        encoderTestTask,
+        "EncoderTest",
+        4096,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        &encoderTaskHandle, // ← guarda handle,
+        0);
+}
+
+void encoderTestTask(void *pvParameters)
+{
+    const float dist_per_tick = 3.1415926f * 0.056f / 15.0f; // π * diâmetro / ticks_por_volta
+    const float dt_s = 0.05f;                                // 50 ms em segundos
+    uint32_t last_ticks = 0;
+
+    while (1)
+    {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY); // espera sinal do RUN
+        uint32_t ticks = encoder_get_ticks();
+        uint32_t delta_ticks = ticks - last_ticks;
+        last_ticks = ticks;
+
+        if (ticks > 0) // só imprime quando está a contar
+        {
+            float velocity = (delta_ticks * dist_per_tick) / dt_s;
+            ESP_LOGI(TAG, "Ticks total: %" PRIu32 " | delta: %" PRIu32 " | Vel: %.3f m/s", ticks, delta_ticks, velocity);
+        }
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
 }
 
 void runfollowerTask(void *pvParameters)
@@ -168,6 +202,7 @@ void runfollowerTask(void *pvParameters)
         while (!run_line_follower()) // retorna true quando a prova termina
         {
             vTaskDelay(pdMS_TO_TICKS(LOOP_DELAY_MS)); // loop rápido, ex: 1–2 ms
+            // taskYIELD(); // cede CPU brevemente sem dormir
         }
 
         // Prova terminou, avisa ControlTask
@@ -180,7 +215,6 @@ void runfollowerTask(void *pvParameters)
 // ================================
 void controlTask(void *pvParameters)
 {
-
     uint32_t duration_ms = CALIBRATION_TIME_MS; ///< Duração da calibração em milissegundos
     robot_state_t state = WAIT_CALIB;
     // Variável global ou estática
@@ -202,14 +236,14 @@ void controlTask(void *pvParameters)
     */
 
     // Assegura motores parados no início
-    motors_stop_progressive();
+    motors_stop_fast();
 
     while (1)
     {
         switch (state)
         {
         case WAIT_CALIB:
-            motors_stop_progressive();
+            motors_stop_fast();
             if (calib_done)
             {
                 // Se já calibrado, pula direto para start
@@ -223,17 +257,17 @@ void controlTask(void *pvParameters)
 
         case CALIBRATING:
             strip_set_color();
-            motors_stop_progressive();
+            motors_stop_fast();
             qtr_calibrate(duration_ms); // corre UMA VEZ
             calib_done = true;          // Marca calibração feita
             state = WAIT_START;
             break;
 
         case WAIT_START:
-            motors_stop_progressive();
+            motors_stop_fast();
             tuning_print_saved(); // opcional: imprime os valores carregados para confirmação
 
-            if (LED_START() > 1000)        // Verifica se o valor do LED indica que está aceso
+            if (LED_START() > 1000) // Verifica se o valor do LED indica que está aceso
             {
                 if (ble_active)
                 {
@@ -247,11 +281,13 @@ void controlTask(void *pvParameters)
             break;
 
         case RUN:
+            encoder_reset_ticks();
             // Notifica a task do line follower para iniciar
             xTaskNotifyGive(lineFollowerTaskHandle);
-
+            xTaskNotifyGive(encoderTaskHandle); // dispara encoder ao mesmo tempo
             // Espera que a prova termine
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+            tuning_print_saved(); // ← lê e imprime da NVS no fim de cada prova
 
             // Liga o BLE se ainda não estiver ativo
             if (!ble_active)
@@ -291,75 +327,6 @@ bool calib_button_pressed(void)
  * @brief Controlo do LED Verde RGB - Built-In
  *
  */
-
-/* Converte endereço BLE em string XX:XX:XX:XX:XX:XX */
-static void addr_to_str(const ble_addr_t *addr, char *str, size_t size)
-{
-    snprintf(str, size,
-             "%02X:%02X:%02X:%02X:%02X:%02X",
-             addr->val[5], addr->val[4], addr->val[3],
-             addr->val[2], addr->val[1], addr->val[0]);
-}
-
-/* Callback de anúncio recebido */
-static int gap_event_cb(struct ble_gap_event *event, void *arg)
-{
-    if (event->type == BLE_GAP_EVENT_DISC)
-    {
-        const struct ble_gap_disc_desc *d = &event->disc;
-
-        char addr_str[18];
-        addr_to_str(&d->addr, addr_str, sizeof(addr_str));
-
-        /* Tenta extrair nome do advertising */
-        struct ble_hs_adv_fields fields;
-        int rc = ble_hs_adv_parse_fields(&fields, d->data, d->length_data);
-        char name[64] = "Unknown";
-
-        if (rc == 0)
-        {
-            if (fields.name != NULL && fields.name_len > 0)
-            {
-                int len = fields.name_len < (int)sizeof(name) - 1 ? fields.name_len : (int)sizeof(name) - 1;
-                memcpy(name, fields.name, len);
-                name[len] = '\0';
-            }
-        }
-
-        ESP_LOGI(TAG, "Device: %s | MAC: %s | RSSI: %d dBm",
-                 name, addr_str, d->rssi);
-    }
-
-    return 0;
-}
-
-/* Inicia scan contínuo */
-static void start_scan(void)
-{
-    struct ble_gap_disc_params disc_params;
-
-    memset(&disc_params, 0, sizeof(disc_params));
-
-    disc_params.itvl = 0x50;       // intervalo de scan
-    disc_params.window = 0x30;     // janela de scan
-    disc_params.passive = 0;       // 0 = active scan
-    disc_params.limited = 0;       // general discovery
-    disc_params.filter_policy = 0; // BLE_HCI_SCAN_FILT_NO_WL
-
-    /* Algumas versões não têm filter_dup/filter_dups – se não existir, ignora.
-    disc_params.filter_dup = 0; */
-
-    int rc = ble_gap_disc(own_addr_type, BLE_HS_FOREVER,
-                          &disc_params, gap_event_cb, NULL);
-    if (rc != 0)
-    {
-        ESP_LOGE(TAG, "Error starting discovery; rc=%d", rc);
-    }
-    else
-    {
-        ESP_LOGI(TAG, "Scanning for BLE devices...");
-    }
-}
 
 /* Callback chamado quando o cliente escreve na characteristic */
 static int kp_chr_access_cb(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg)

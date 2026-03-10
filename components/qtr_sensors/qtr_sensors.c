@@ -1,10 +1,11 @@
 #include "qtr_sensors.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "tuning.h" // PRETO_PERCENT, S1_CHANNEL, etc.
 #include "strip_leds.h"
 #include "esp_adc/adc_oneshot.h"
 #include "motors_control.h"
+#include "braking.h"
+#include "tuning.h"
 
 static adc_oneshot_unit_handle_t adc1_handle; // só visível neste ficheiro
 
@@ -33,7 +34,7 @@ void qtr_init(void)
     adc_oneshot_config_channel(adc1_handle, S2_CHANNEL, &adc_config);
     adc_oneshot_config_channel(adc1_handle, S3_CHANNEL, &adc_config);
     adc_oneshot_config_channel(adc1_handle, S4_CHANNEL, &adc_config);
-    adc_oneshot_config_channel(adc1_handle, LED_CHANNEL, &adc_config); // Configura canal do LED 
+    adc_oneshot_config_channel(adc1_handle, LED_CHANNEL, &adc_config); // Configura canal do LED
 }
 
 int LED_START(void)
@@ -131,15 +132,15 @@ bool run_line_follower(void)
     float s_norm[4];
     float line_position = 0.0f; ///< Posição da linha calculada
     // Ler valor de cada canal
-    adc_oneshot_read(adc1_handle, ADC_CHANNEL_6, &raw[0]);
-    adc_oneshot_read(adc1_handle, ADC_CHANNEL_7, &raw[1]);
-    adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &raw[2]);
-    adc_oneshot_read(adc1_handle, ADC_CHANNEL_5, &raw[3]);
-
+    adc_oneshot_read(adc1_handle, S1_CHANNEL, &raw[0]);
+    adc_oneshot_read(adc1_handle, S2_CHANNEL, &raw[1]);
+    adc_oneshot_read(adc1_handle, S3_CHANNEL, &raw[2]);
+    adc_oneshot_read(adc1_handle, S4_CHANNEL, &raw[3]);
+    
     if (raw[0] < 200 && raw[3] < 200)
     {
         // Para os motores
-        motors_stop_progressive();
+        braking_short_brake();
         printf("Prova terminada!\n");
         return true; // prova terminou
     }
