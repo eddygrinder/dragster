@@ -633,6 +633,13 @@ C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/qtr_sensors/CMakeFiles/li
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/qtr_sensors/CMakeFiles/install.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/qtr_sensors/CMakeFiles/install/local.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/qtr_sensors/CMakeFiles/install/strip.dir
+C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/ble/CMakeFiles/__idf_ble.dir
+C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/ble/CMakeFiles/edit_cache.dir
+C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/ble/CMakeFiles/rebuild_cache.dir
+C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/ble/CMakeFiles/list_install_components.dir
+C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/ble/CMakeFiles/install.dir
+C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/ble/CMakeFiles/install/local.dir
+C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/ble/CMakeFiles/install/strip.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/braking/CMakeFiles/__idf_braking.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/braking/CMakeFiles/edit_cache.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/braking/CMakeFiles/rebuild_cache.dir

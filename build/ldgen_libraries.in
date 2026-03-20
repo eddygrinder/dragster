@@ -128,10 +128,12 @@ $<TARGET_FILE:__idf_tuning>
 $<TARGET_FILE:__idf_esp_adc>
 $<TARGET_FILE:__idf_motors_control>
 $<TARGET_FILE:__idf_encoders>
+$<TARGET_FILE:__idf_ble>
 $<TARGET_FILE:__idf_braking>
 $<TARGET_FILE:__idf_78__esp-builtin-led>
 $<TARGET_FILE:idf::encoders>
 $<TARGET_FILE:idf::qtr_sensors>
+$<TARGET_FILE:idf::ble>
 $<TARGET_FILE:idf::braking>
 $<TARGET_FILE:idf::78__esp-builtin-led>
 $<TARGET_FILE:idf::main>

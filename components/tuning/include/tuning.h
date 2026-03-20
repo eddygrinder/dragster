@@ -9,6 +9,10 @@
 // param quase totalmente o dragster dentro de 1 metro.
 #define SHORT_BRAKE_MS 2000
 
+#define BRAKE_STEP_MS   50   // duração de cada fase em ms
+#define BRAKE_STEPS     3    // número de fases
+#define BRAKE_MAX_PCT   30   // percentagem máxima de inversão
+
 // ===============================
 // Sensores (constantes)
 // ===============================

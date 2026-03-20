@@ -128,6 +128,14 @@ void qtr_calibrate(uint32_t duration_ms)
 
 bool run_line_follower(void)
 {
+    static bool first_line_passed = false;
+
+    static uint32_t start_time = 0;
+    if (start_time == 0)
+        start_time = xTaskGetTickCount();
+
+    bool on_track = (xTaskGetTickCount() - start_time) > pdMS_TO_TICKS(200); // 200ms de graça
+
     int raw[4];
     float s_norm[4];
     float line_position = 0.0f; ///< Posição da linha calculada
@@ -136,13 +144,29 @@ bool run_line_follower(void)
     adc_oneshot_read(adc1_handle, S2_CHANNEL, &raw[1]);
     adc_oneshot_read(adc1_handle, S3_CHANNEL, &raw[2]);
     adc_oneshot_read(adc1_handle, S4_CHANNEL, &raw[3]);
-    
-    if ((raw[1] < 200 && raw[2] < 200) || (raw[0] > 1000 && raw[3] > 1000))
+
+    // linha de chegada
+    if (raw[0] > 1000 && raw[3] > 1000)
     {
-        // Para os motores
+        if (!first_line_passed)
+        {
+            first_line_passed = true;
+            vTaskDelay(pdMS_TO_TICKS(100)); // espera sair da linha de partida
+            return false;
+        }
+        first_line_passed = false;
+        start_time = 0;
         braking_short_brake();
-        printf("Prova terminada!\n");
-        return true; // prova terminou
+        return true;
+    }
+
+    // perdeu a linha — só verifica após 300ms
+    if (on_track && raw[1] < 200 && raw[2] < 200)
+    {
+        start_time = 0;
+        first_line_passed = false;
+        motors_coast(); // ← coast em vez de inversão
+        return true;
     }
 
     // Valores normalizados entre 0.0 e 1.0

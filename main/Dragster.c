@@ -4,35 +4,15 @@
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/queue.h"
-#include "esp_adc/adc_oneshot.h"
 #include "driver/gpio.h"
-#include "driver/ledc.h"    // PWM control
-#include "hal/ledc_types.h" // Tipos LEDC
-#include "esp_rom_gpio.h"   // esp_rom_gpio_pad_select_gpio()
-#include "tuning.h"         // Configurações de tuning e NVS
-
-#include "nvs_flash.h"
-#include "nvs.h"
+#include "esp_rom_gpio.h"
 #include "esp_log.h"
-
-#include "esp_nimble_hci.h"
-#include "nimble/nimble_port.h"
-#include "nimble/nimble_port_freertos.h"
-#include "host/ble_hs.h"
-#include "host/util/util.h"
-#include "host/ble_gap.h"
-
+#include "nvs_flash.h"
+#include "tuning.h"
+#include "ble.h"
 #include "strip_leds.h"
 #include "motors_control.h"
 #include "qtr_sensors.h"
-
-#include "driver/rmt_tx.h"
-
-#include "host/ble_uuid.h"
-#include "services/gap/ble_svc_gap.h"
-#include "services/gatt/ble_svc_gatt.h"
-
 #include "encoders.h"
 
 // ===============================
@@ -46,9 +26,6 @@ bool calib_done = false; // Flag calibração
 
 volatile bool led_command = false;
 volatile uint8_t led_value_new = 0;
-
-// Dente azul - Tag para logs
-static uint8_t own_addr_type;
 
 // ===============================
 // Estruturas de dados
@@ -79,15 +56,6 @@ TaskHandle_t encoderTaskHandle;
 bool calib_button_pressed(void);
 // void LED_START(void);
 
-/// @brief Dente azul
-static void ble_init(void);
-static void host_task(void *param);
-static void ble_on_sync(void);
-int gatt_svr_init(void);
-static int kp_chr_access_cb(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg);
-static int base_speed_chr_access_cb(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg);
-void ble_restart_advertising(void);
-
 /// @brief Estados possíveis do robô durante a prova
 ///
 /// O robô passa por estes estados em sequência:
@@ -112,7 +80,7 @@ void app_main(void)
     // Inicializar RGB interno
     rgb_init();
     // Inicializar fita de LEDs externa
-    strip_init();
+    // strip_init();
     // Inicializar Bluetooth
     ble_init();
 
@@ -236,14 +204,14 @@ void controlTask(void *pvParameters)
     */
 
     // Assegura motores parados no início
-    motors_stop_fast();
+    motors_coast();
 
     while (1)
     {
         switch (state)
         {
         case WAIT_CALIB:
-            motors_stop_fast();
+            motors_coast(); // garante que motores estão em coast enquanto espera
             if (calib_done)
             {
                 // Se já calibrado, pula direto para start
@@ -257,21 +225,21 @@ void controlTask(void *pvParameters)
 
         case CALIBRATING:
             strip_set_color();
-            motors_stop_fast();
+            motors_coast();
             qtr_calibrate(duration_ms); // corre UMA VEZ
             calib_done = true;          // Marca calibração feita
             state = WAIT_START;
             break;
 
         case WAIT_START:
-            motors_stop_fast();
+            motors_coast();
             tuning_print_saved(); // opcional: imprime os valores carregados para confirmação
 
             if (LED_START() > 1000) // Verifica se o valor do LED indica que está aceso
             {
                 if (ble_active)
                 {
-                    ble_gap_adv_stop(); // desliga o BLE antes de correr
+                    ble_stop_advertising();  // ← função pública do ble.h
                     ble_active = false;
                     ESP_LOGI(TAG, "BLE disabled before RUN");
                 }
@@ -327,190 +295,6 @@ bool calib_button_pressed(void)
  * @brief Controlo do LED Verde RGB - Built-In
  *
  */
-
-/* Callback chamado quando o cliente escreve na characteristic */
-static int kp_chr_access_cb(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg)
-{
-    if (ctxt->op == BLE_GATT_ACCESS_OP_WRITE_CHR && ctxt->om->om_len >= 2)
-    {
-        uint16_t raw = (ctxt->om->om_data[0] << 8) | ctxt->om->om_data[1];
-        tuning.KP = raw; // valor literal
-        ESP_LOGI(TAG, "KP updated: %d", tuning.KP);
-        tuning_save();        // grava imediatamente o novo valor na NVS para persistência entre testes
-        tuning_print_saved(); // opcional: imprime os valores salvos para confirmação
-    }
-    else if (ctxt->op == BLE_GATT_ACCESS_OP_READ_CHR)
-    {
-        // devolve o valor atual
-        uint8_t buf[2];
-        buf[0] = (tuning.KP >> 8) & 0xFF;
-        buf[1] = tuning.KP & 0xFF;
-        os_mbuf_append(ctxt->om, buf, 2);
-    }
-
-    return 0; // sucesso
-}
-
-// BASE_SPEED
-static int base_speed_chr_access_cb(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg)
-{
-    if (ctxt->op == BLE_GATT_ACCESS_OP_WRITE_CHR && ctxt->om->om_len >= 2)
-    {
-        uint16_t raw = (ctxt->om->om_data[0] << 8) | ctxt->om->om_data[1];
-        tuning.BASE_SPEED = raw; // valor literal
-        ESP_LOGI(TAG, "BASE_SPEED updated: %d", tuning.BASE_SPEED);
-        tuning_save();        // grava imediatamente o novo valor na NVS para persistência entre testes
-        tuning_print_saved(); // opcional: imprime os valores salvos para confirmação
-    }
-    return 0;
-}
-
-/* Tabela GATT com um serviço simples e characteristic LED */
-static const struct ble_gatt_svc_def gatt_svcs[] = {
-    {
-        /*** Serviço personalizado ***/
-        .type = BLE_GATT_SVC_TYPE_PRIMARY,
-        .uuid = BLE_UUID128_DECLARE(0x04, 0xa4, 0xc3, 0x5f, 0xef, 0xba, 0x6f, 0xae, 0xa7, 0x43, 0xff, 0x43, 0x92, 0x9e, 0x68, 0x07),
-
-        .characteristics = (struct ble_gatt_chr_def[]){
-            {
-                .uuid = BLE_UUID128_DECLARE(0x4f, 0x46, 0x90, 0x8f, 0x77, 0x46, 0x42, 0x9f, 0xa7, 0x5c, 0xcc, 0x71, 0x2e, 0x14, 0x59, 0xc9),
-
-                .access_cb = kp_chr_access_cb,
-                .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_READ, // write sem resposta chega
-            },
-            {
-                // Characteristic BASE_SPEED
-                .uuid = BLE_UUID128_DECLARE(0x6a, 0x7b, 0x90, 0x8f, 0x77, 0x46, 0x42, 0x9f, 0xa7, 0x5c, 0xcc, 0x71, 0x2e, 0x14, 0x59, 0xca),
-                .access_cb = base_speed_chr_access_cb,
-                .flags = BLE_GATT_CHR_F_WRITE,
-            },
-            {0} // terminador
-        },
-    },
-    {0} // terminador de serviços
-};
-
-int gatt_svr_init(void)
-{
-    int rc;
-
-    // Inicializa serviços padrão
-    ble_svc_gap_init();
-    ble_svc_gatt_init();
-
-    // Conta e adiciona os teus serviços
-    rc = ble_gatts_count_cfg(gatt_svcs);
-    ESP_LOGI(TAG, "ble_gatts_count_cfg() rc=%d", rc);
-    if (rc != 0)
-    {
-        ESP_LOGE(TAG, "Erro count_cfg: %d", rc);
-        return rc;
-    }
-
-    rc = ble_gatts_add_svcs(gatt_svcs);
-    ESP_LOGI(TAG, "ble_gatts_add_svcs() rc=%d", rc);
-    if (rc != 0)
-    {
-        ESP_LOGE(TAG, "Erro add_svcs: %d", rc);
-        return rc;
-    }
-
-    ESP_LOGI(TAG, "GATT services registados OK!");
-    return 0;
-}
-
-/* Callback NimBLE quando o host está pronto */
-static void ble_on_sync(void)
-{
-    int rc = ble_hs_id_infer_auto(0, &own_addr_type);
-    if (rc != 0)
-    {
-        ESP_LOGE(TAG, "Address infer failed; rc=%d", rc);
-        return;
-    }
-    // NOVA PARTE: registar serviços GATT AQUI (após sync)
-    rc = gatt_svr_init();
-    if (rc != 0)
-    {
-        ESP_LOGE(TAG, "gatt_svr_init() falhou: %d", rc);
-        return;
-    }
-    // Nome do dispositivo
-    struct ble_hs_adv_fields fields;
-    memset(&fields, 0, sizeof(fields));
-    fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
-    const char *name = "DRAGSTER";
-    fields.name = (uint8_t *)name;
-    fields.name_len = strlen(name);
-    fields.name_is_complete = 1;
-
-    ble_gap_adv_set_fields(&fields);
-
-    // Parâmetros de advertising
-    struct ble_gap_adv_params adv_params;
-    memset(&adv_params, 0, sizeof(adv_params));
-    adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
-    adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
-
-    ESP_LOGI(TAG, "Starting advertising...");
-    ble_gap_adv_start(
-        own_addr_type,
-        NULL,
-        BLE_HS_FOREVER,
-        &adv_params,
-        NULL,
-        NULL);
-}
-
-void ble_restart_advertising(void)
-{
-    struct ble_gap_adv_params adv_params;
-    memset(&adv_params, 0, sizeof(adv_params));
-    adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
-    adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
-    ble_gap_adv_start(own_addr_type, NULL, BLE_HS_FOREVER, &adv_params, NULL, NULL);
-}
-
-/* Task principal NimBLE (corre o host) */
-static void host_task(void *param)
-{
-    ESP_LOGI(TAG, "NimBLE host task started");
-    nimble_port_run(); // Nunca retorna
-    nimble_port_freertos_deinit();
-}
-
-/* Inicialização NimBLE + FreeRTOS */
-static void ble_init(void)
-{
-    // NVS
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
-    {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
-
-    // A partir do IDF 5.x, o controller + HCI é feito dentro do nimble_port_init()
-    nimble_port_init(); // se isto falhar, retorna assert/log
-    // Serviços padrão GAP/GATT
-    // ble_svc_gap_init();
-    // ble_svc_gatt_init();
-
-    // Registar os teus serviços
-    int rc = ble_gatts_count_cfg(gatt_svcs);
-    assert(rc == 0);
-    rc = ble_gatts_add_svcs(gatt_svcs);
-    assert(rc == 0);
-    // Configurar callbacks NimBLE host
-    ble_hs_cfg.sync_cb = ble_on_sync;
-    ble_hs_cfg.reset_cb = NULL;
-
-    // Criar task FreeRTOS para o host NimBLE
-    nimble_port_freertos_init(host_task);
-}
-
 /*
 
 VER ISTO PARA UNIFIRMIZAR O CÓDIGO DOS MOTORES QUE PODE ESTAR REPETIDO

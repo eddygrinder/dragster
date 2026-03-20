@@ -4,11 +4,11 @@
 #include "driver/ledc.h" // ledc_channel_t
 
 // ----- Motores -----
-#define AIN1 17 // Enable do motor esquerdo (PWM)
-#define AIN2 16
+#define AIN1 17 // GPIO17 — LPWM esquerdo
+#define AIN2 16 // GPIO16 — RPWM esquerdo
 #define PWM1 15 
-#define BIN1 40 // Enable do motor direito (PWM)
-#define BIN2 41
+#define BIN1 40 // GPIO40 — LPWM direito
+#define BIN2 41 // GPIO41 — RPWM direito
 #define PWM2 42 
 
 #define MOTOR_PWM_FREQ 20000 ///< Frequência PWM (Hz)
@@ -31,4 +31,4 @@ void motorControl(float line_position);
 //static void motor_set(int pwm, int gpio_a, int gpio_b, ledc_channel_t channel);
 void motors_set(int left_pwm, int right_pwm);
 void motors_stop_fast(void);
-
+void motors_coast(void);
