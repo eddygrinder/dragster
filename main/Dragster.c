@@ -26,7 +26,6 @@
 bool calib_done = false; // Flag calibração
 
 volatile uint32_t encoder_total_ticks = 0;
-uint32_t IGNORE_LINE_TICKS = 5; // ticks para ignorar a linha de partida (ajustar conforme necessário)
 
 // ===============================
 // Estruturas de dados
@@ -39,12 +38,6 @@ typedef struct
     float s1, s2, s3, s4; ///< Valores normalizados dos sensores
 } SensorValues;
 
-uint32_t TICKS_REDUCE_SPEED = 15; // ticks correspondentes a 2 m
-uint32_t TICKS_BRAKE_SPEED = 140; // ticks correspondentes à travagem
-uint32_t BREAK_TICKS = 150;       // ticks correspondentes À DISTÂNCIA DE TRAVAGEM
-uint32_t KP_BRAKE = 2;            // ganho de travagem - ajustável conforme testes
-uint32_t MAX_BRAKE_PWM = 400;     // valor máximo de PWM para travagem segura sem queimar drivers - ajustável conforme testes
-uint32_t STOP_THRESHOLD = 5;      // ticks por ciclo abaixo do qual consideramos que o robô parou - ajustável conforme testes
 bool run_active = false; 
 
 // ===============================
@@ -222,9 +215,8 @@ void runfollowerTask(void *pvParameters)
             case SUBSTATE_BRAKE:
                 const int brake_delay = 5;            // atraso adicional para medir a velocidade
                 int prev_ticks = encoder_total_ticks; // captura ticks atuais para comparação
-                bool stopped = false;
 
-                while (!stopped)
+                while (1)
                 {
                     vTaskDelay(pdMS_TO_TICKS(brake_delay));  // espera um pouco para medir efeito
                     int current_ticks = encoder_total_ticks; // lê ticks atuais
@@ -239,9 +231,9 @@ void runfollowerTask(void *pvParameters)
 
                     if (dticks <= STOP_THRESHOLD)
                     {
-                        stopped = true;
                         strip_set_color(); // opcional: mantém LEDs vermelhos acesos para indicar que parou
-                        motors_coast();    // desliga travagem para evitar sobreaquecimento
+                        motors_short_brake();    // desliga travagem para evitar sobreaquecimento
+                        break;             // sai do loop de travagem
                     }
                 }
                 run_active = false; // ← dentro do case

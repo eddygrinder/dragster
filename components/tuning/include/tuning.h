@@ -2,17 +2,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// tempo do short brake em ms
-// Usado para manter os motores em curto (short brake) de forma contínua
-// durante a travagem rápida. Ajustar entre 120–500 ms conforme testes.
-// Valores menores apenas reduzem parte da velocidade; valores maiores
-// param quase totalmente o dragster dentro de 1 metro.
-#define SHORT_BRAKE_MS 2000
-
-#define BRAKE_STEP_MS 50 // duração de cada fase em ms
-#define BRAKE_STEPS 3    // número de fases
-#define BRAKE_MAX_PCT 30 // percentagem máxima de inversão
-
 // ===============================
 // Sensores (constantes)
 // ===============================
@@ -25,6 +14,15 @@
 // ===============================
 #define LOOP_DELAY_MS 2          ///< Delay do loop principal em ms
 #define CALIBRATION_TIME_MS 5000 ///< Duração da calibração em ms
+
+#define TICKS_REDUCE_SPEED 340 // ticks correspondentes a 2 m
+#define TICKS_BRAKE_SPEED 480  // ticks correspondentes à travagem
+#define BREAK_TICKS 620        // ticks correspondentes À DISTÂNCIA DE TRAVAGEM
+#define KP_BRAKE 8             // ganho de travagem - ajustável conforme testes
+#define MAX_BRAKE_PWM 800      // valor máximo de PWM para travagem segura sem queimar drivers - ajustável conforme testes
+#define STOP_THRESHOLD 5       // ticks por ciclo abaixo do qual consideramos que o robô parou - ajustável conforme testes
+#define IGNORE_LINE_TICKS 7    // ticks para ignorar a linha de partida (ajustar conforme necessário)
+
 
 // -------------------------------
 // Protótipos de funções de tuning - KP e BASE_SPEED

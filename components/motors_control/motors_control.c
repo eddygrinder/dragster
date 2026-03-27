@@ -157,19 +157,6 @@ void motors_set(int left_pwm, int right_pwm)
     ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE);
 }
 
-void motors_stop_fast(void)
-{
-    // Corta frente imediatamente
-    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ, 0);
-    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ);
-    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA, 0);
-    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA);
-    gpio_set_level(AIN1, 0);
-    gpio_set_level(BIN1, 0);
-    gpio_set_level(PWM1, 0);
-    gpio_set_level(PWM2, 0);
-}
-
 void motors_brake_set(int pwm)
 {
     if (pwm > MAX_DUTY_CYCLE)
@@ -189,12 +176,30 @@ void motors_coast(void)
     ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ);
     ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA, 0);
     ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA);
+    
     ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE, 0);
     ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE);
     ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE, 0);
     ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE);
-    gpio_set_level(AIN1, 0);
-    gpio_set_level(BIN1, 0);
+
     gpio_set_level(PWM1, 1); // ← EN=0
     gpio_set_level(PWM2, 1); // ← EN=0
+}
+
+void motors_short_brake(void)
+{
+    uint32_t intensity = 150; // valor baixo — trava suavemente - ajustável
+
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ, intensity);
+    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ);
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE, intensity);
+    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE);
+
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA, intensity);
+    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA);
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE, intensity);
+    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE);
+
+    gpio_set_level(PWM1, 1);
+    gpio_set_level(PWM2, 1);
 }
