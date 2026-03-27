@@ -4,7 +4,7 @@
 #include "strip_leds.h"
 #include "esp_adc/adc_oneshot.h"
 #include "motors_control.h"
-#include "braking.h"
+// #include "braking.h"
 #include "tuning.h"
 
 static adc_oneshot_unit_handle_t adc1_handle; // só visível neste ficheiro
@@ -12,6 +12,14 @@ static adc_oneshot_unit_handle_t adc1_handle; // só visível neste ficheiro
 volatile CalibrationData calibData;     // Guarda sMin, sMax e limites
 volatile bool prova_finalizada = false; // Flag fim de prova
 static const char *TAG = "QTR";         // para ESP_LOGI
+
+volatile bool speed_reduced = false; // já reduziu velocidade
+volatile bool brake_done = false;    // já travou
+
+// Array raw[] definido static no ficheiro, acessível apenas aqui
+// Armazena leitura bruta dos 4 sensores
+static int raw[4];
+static const adc_channel_t channels[4] = {S1_CHANNEL, S2_CHANNEL, S3_CHANNEL, S4_CHANNEL};
 
 void qtr_init(void)
 {
@@ -41,7 +49,7 @@ int LED_START(void)
 {
     int raw_led;
     adc_oneshot_read(adc1_handle, LED_CHANNEL, &raw_led);
-    ESP_LOGI(TAG, "LED raw value: %d", raw_led);
+    // ESP_LOGI(TAG, "LED raw value: %d", raw_led);
     return raw_led;
 }
 
@@ -126,50 +134,36 @@ void qtr_calibrate(uint32_t duration_ms)
     rgb_off();
 }
 
-bool run_line_follower(void)
+// ===============================
+// Leitura dos sensores QTR
+// ===============================
+
+// ===============================
+// Seguimento da linha
+// ===============================
+
+/**
+ * Executa o controlo de motores com base na posição da linha
+ * Calcula a posição normalizada e chama motorControl()
+ */
+bool run_line_follower()
 {
-    static bool first_line_passed = false;
+    float s_norm[4];            // valores normalizados
+    float line_position = 0.0f; // posição calculada da linha
 
-    static uint32_t start_time = 0;
-    if (start_time == 0)
-        start_time = xTaskGetTickCount();
-
-    bool on_track = (xTaskGetTickCount() - start_time) > pdMS_TO_TICKS(200); // 200ms de graça
-
-    int raw[4];
-    float s_norm[4];
-    float line_position = 0.0f; ///< Posição da linha calculada
-    // Ler valor de cada canal
-    adc_oneshot_read(adc1_handle, S1_CHANNEL, &raw[0]);
-    adc_oneshot_read(adc1_handle, S2_CHANNEL, &raw[1]);
-    adc_oneshot_read(adc1_handle, S3_CHANNEL, &raw[2]);
-    adc_oneshot_read(adc1_handle, S4_CHANNEL, &raw[3]);
-
-    // linha de chegada
-    if (raw[0] > 1000 && raw[3] > 1000)
+    for (int i = 0; i < 4; i++)
     {
-        if (!first_line_passed)
-        {
-            first_line_passed = true;
-            vTaskDelay(pdMS_TO_TICKS(100)); // espera sair da linha de partida
-            return false;
-        }
-        first_line_passed = false;
-        start_time = 0;
-        braking_short_brake();
-        return true;
+        adc_oneshot_read(adc1_handle, channels[i], &raw[i]);
     }
 
     // perdeu a linha — só verifica após 300ms
-    if (on_track && raw[1] < 200 && raw[2] < 200)
+    if (raw[1] < 200 && raw[2] < 200)
     {
-        start_time = 0;
-        first_line_passed = false;
-        motors_coast(); // ← coast em vez de inversão
+        motors_coast(); //
         return true;
     }
 
-    // Valores normalizados entre 0.0 e 1.0
+    // Normaliza valores brutos para [0,1] usando calibração
     for (int i = 0; i < 4; i++)
     {
         s_norm[i] = normalize(raw[i], calibData.sMin[i], calibData.sMax[i]);
@@ -177,5 +171,6 @@ bool run_line_follower(void)
 
     line_position = calculaPosicao(s_norm[0], s_norm[1], s_norm[2], s_norm[3]);
     motorControl(line_position);
+
     return false; // prova continua
 }

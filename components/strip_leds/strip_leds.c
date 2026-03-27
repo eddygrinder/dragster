@@ -44,6 +44,47 @@ void strip_set_color(void)
     led_strip_refresh(led_strip);
 }
 
+void strip_set_red(void)
+{
+    for (int i = 0; i < STRIP_LED_NUM; i++)
+    {
+        led_strip_set_pixel(led_strip, i, 255, 0, 0); // Red color
+    }
+
+    led_strip_refresh(led_strip);
+}
+
+void strip_set_green(void)
+{
+    for (int i = 0; i < STRIP_LED_NUM; i++)
+    {
+        led_strip_set_pixel(led_strip, i, 0, 255, 0); // Green color
+    }
+
+    led_strip_refresh(led_strip);
+}
+
+void strip_set_blue(void)
+{
+    for (int i = 0; i < STRIP_LED_NUM; i++)
+    {
+        led_strip_set_pixel(led_strip, i, 0, 0, 255); // Blue color
+    }
+
+    led_strip_refresh(led_strip);
+}
+
+void strip_set_yellow(void)
+{
+    for (int i = 0; i < STRIP_LED_NUM; i++)
+    {
+        led_strip_set_pixel(led_strip, i, 255, 255, 0); // Yellow color
+    }
+
+    led_strip_refresh(led_strip);
+}
+
+
 void strip_off(void)
 
 {

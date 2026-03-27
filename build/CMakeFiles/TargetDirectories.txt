@@ -640,13 +640,6 @@ C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/ble/CMakeFiles/list_insta
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/ble/CMakeFiles/install.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/ble/CMakeFiles/install/local.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/ble/CMakeFiles/install/strip.dir
-C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/braking/CMakeFiles/__idf_braking.dir
-C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/braking/CMakeFiles/edit_cache.dir
-C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/braking/CMakeFiles/rebuild_cache.dir
-C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/braking/CMakeFiles/list_install_components.dir
-C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/braking/CMakeFiles/install.dir
-C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/braking/CMakeFiles/install/local.dir
-C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/braking/CMakeFiles/install/strip.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/78__esp-builtin-led/CMakeFiles/__idf_78__esp-builtin-led.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/78__esp-builtin-led/CMakeFiles/edit_cache.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/78__esp-builtin-led/CMakeFiles/rebuild_cache.dir

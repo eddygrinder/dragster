@@ -14,12 +14,10 @@ void motors_init(void)
     // Motor A (esquerdo)
     esp_rom_gpio_pad_select_gpio(PWM1);
     gpio_set_direction(PWM1, GPIO_MODE_OUTPUT);
-    gpio_set_level(PWM1, 1);
 
     // Motor B (direito)
     esp_rom_gpio_pad_select_gpio(PWM2);
     gpio_set_direction(PWM2, GPIO_MODE_OUTPUT);
-    gpio_set_level(PWM2, 1);
 
     // -------------------------------
     // 2) Configuração do PWM (LEDC)
@@ -116,6 +114,9 @@ static void motor_set(int pwm, int gpio_a, int gpio_b, ledc_channel_t channel, i
 
 void motorControl(float line_position)
 {
+    gpio_set_level(PWM1, 1); // ← EN=1 antes de andar
+    gpio_set_level(PWM2, 1);
+
     // Garante travagem desligada
     ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE, 0);
     ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE);
@@ -140,8 +141,20 @@ void motorControl(float line_position)
 
 void motors_set(int left_pwm, int right_pwm)
 {
-    motor_set(left_pwm, AIN1, AIN2, MOTOR_PWM_CHANNEL_ESQ, &current_left_pwm);
-    motor_set(right_pwm, BIN1, BIN2, MOTOR_PWM_CHANNEL_DTA, &current_right_pwm);
+    gpio_set_level(PWM1, 1);
+    gpio_set_level(PWM2, 1);
+
+    // RPWM — frente
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ, left_pwm);
+    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ);
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA, right_pwm);
+    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA);
+
+    // LPWM=0
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE, 0);
+    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE);
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE, 0);
+    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE);
 }
 
 void motors_stop_fast(void)
@@ -151,32 +164,22 @@ void motors_stop_fast(void)
     ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ);
     ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA, 0);
     ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA);
+    gpio_set_level(AIN1, 0);
+    gpio_set_level(BIN1, 0);
+    gpio_set_level(PWM1, 0);
+    gpio_set_level(PWM2, 0);
+}
 
-    gpio_set_level(AIN1, 1);
-    gpio_set_level(BIN1, 1);
-
-    // Rampa de inversão progressiva
-    // Cada fase: 50ms, aumenta 10% por fase
-    int steps[] = {102, 205, 307}; // 10%, 20%, 30% de 1023
-    int num_steps = sizeof(steps) / sizeof(steps[0]);
-
-    for (int i = 0; i < num_steps; i++)
-    {
-        ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE, steps[i]);
-        ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE);
-        ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE, steps[i]);
-        ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE);
-        vTaskDelay(pdMS_TO_TICKS(50));
-    }
-
-    // Coast final
-    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE, 0);
+void motors_brake_set(int pwm)
+{
+    if (pwm > MAX_DUTY_CYCLE)
+        pwm = MAX_DUTY_CYCLE;
+    if (pwm < 0)
+        pwm = 0;
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE, pwm);
     ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE);
-    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE, 0);
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE, pwm);
     ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE);
-
-    gpio_set_level(AIN1, 1);
-    gpio_set_level(BIN1, 1);
 }
 
 void motors_coast(void)
@@ -186,7 +189,12 @@ void motors_coast(void)
     ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ);
     ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA, 0);
     ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA);
-
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE, 0);
+    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE);
+    ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE, 0);
+    ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE);
     gpio_set_level(AIN1, 0);
     gpio_set_level(BIN1, 0);
+    gpio_set_level(PWM1, 1); // ← EN=0
+    gpio_set_level(PWM2, 1); // ← EN=0
 }

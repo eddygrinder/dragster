@@ -9,9 +9,9 @@
 // param quase totalmente o dragster dentro de 1 metro.
 #define SHORT_BRAKE_MS 2000
 
-#define BRAKE_STEP_MS   50   // duração de cada fase em ms
-#define BRAKE_STEPS     3    // número de fases
-#define BRAKE_MAX_PCT   30   // percentagem máxima de inversão
+#define BRAKE_STEP_MS 50 // duração de cada fase em ms
+#define BRAKE_STEPS 3    // número de fases
+#define BRAKE_MAX_PCT 30 // percentagem máxima de inversão
 
 // ===============================
 // Sensores (constantes)
@@ -23,7 +23,7 @@
 // ===============================
 // Timing / Loops (constantes)
 // ===============================
-#define LOOP_DELAY_MS 10         ///< Delay do loop principal em ms
+#define LOOP_DELAY_MS 2          ///< Delay do loop principal em ms
 #define CALIBRATION_TIME_MS 5000 ///< Duração da calibração em ms
 
 // -------------------------------
@@ -33,6 +33,8 @@
 void tuning_load();
 void tuning_save();
 void tuning_print_saved();
+void save_final_ticks(uint32_t ticks_final);
+uint32_t read_final_ticks(void);
 
 // Estrutura de parâmetros de controlo - KP e BASE_SPEED
 typedef struct
@@ -40,6 +42,7 @@ typedef struct
     int KP;                   // valor literal
     int BASE_SPEED;           // valor literal
     int BRAKE_DISTANCE_TICKS; // ticks desde linha até parar
+    int dist_cm;              // distância de travagem em cm, calculada a partir dos ticks e gravada para referência futura
 
 } tuning_t;
 

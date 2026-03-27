@@ -14,6 +14,7 @@
 #include "motors_control.h"
 #include "qtr_sensors.h"
 #include "encoders.h"
+// #include "braking.h"
 
 // ===============================
 // Definições de hardware
@@ -24,8 +25,8 @@
 // ----- Botões -----y
 bool calib_done = false; // Flag calibração
 
-volatile bool led_command = false;
-volatile uint8_t led_value_new = 0;
+volatile uint32_t encoder_total_ticks = 0;
+uint32_t IGNORE_LINE_TICKS = 5; // ticks para ignorar a linha de partida (ajustar conforme necessário)
 
 // ===============================
 // Estruturas de dados
@@ -38,7 +39,13 @@ typedef struct
     float s1, s2, s3, s4; ///< Valores normalizados dos sensores
 } SensorValues;
 
-volatile SensorValues sensors; ///< Valores atuais dos sensores
+uint32_t TICKS_REDUCE_SPEED = 15; // ticks correspondentes a 2 m
+uint32_t TICKS_BRAKE_SPEED = 140; // ticks correspondentes à travagem
+uint32_t BREAK_TICKS = 150;       // ticks correspondentes À DISTÂNCIA DE TRAVAGEM
+uint32_t KP_BRAKE = 2;            // ganho de travagem - ajustável conforme testes
+uint32_t MAX_BRAKE_PWM = 400;     // valor máximo de PWM para travagem segura sem queimar drivers - ajustável conforme testes
+uint32_t STOP_THRESHOLD = 5;      // ticks por ciclo abaixo do qual consideramos que o robô parou - ajustável conforme testes
+bool run_active = false; 
 
 // ===============================
 // Protótipos de funções
@@ -71,6 +78,15 @@ typedef enum
     RUN,         ///< Estado de execução: segue a linha utilizando os valores calibrados
 } robot_state_t;
 
+typedef enum
+{
+    SUBSTATE_RUN,              // velocidade normal
+    SUBSTATE_REDUCE,           // redução de velocidade
+    SUBSTATE_BRAKE,            // travagem ativa
+    SUBSTATE_REDUCE_LOOP,      // loop de redução até atingir o ponto de travagem
+    SUBSTATE_START_LINE_IGNORE // subestado inicial para ignorar a linha de partida
+} dragster_substate_t;
+
 /**
  * @brief Inicializa hardware, ADC, PWM e cria a task de controlo
  */
@@ -80,7 +96,7 @@ void app_main(void)
     // Inicializar RGB interno
     rgb_init();
     // Inicializar fita de LEDs externa
-    // strip_init();
+    strip_init();
     // Inicializar Bluetooth
     ble_init();
 
@@ -88,8 +104,8 @@ void app_main(void)
     nvs_flash_init();
     tuning_load();
     tuning_print_saved(); // opcional: imprime os valores carregados para confirmação
-
-    encoder_init(); // Configura o GPIO do encoder e a ISR para contagem de ticks
+    read_final_ticks();   // lê os ticks finais da última prova para referência
+    encoder_init();       // Configura o GPIO do encoder e a ISR para contagem de ticks
 
     // -------------------------------
     // Configuração dos GPIOs de direção
@@ -139,23 +155,16 @@ void app_main(void)
 
 void encoderTestTask(void *pvParameters)
 {
-    const float dist_per_tick = 3.1415926f * 0.056f / 15.0f; // π * diâmetro / ticks_por_volta
-    const float dt_s = 0.05f;                                // 50 ms em segundos
-    uint32_t last_ticks = 0;
-
     while (1)
     {
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY); // espera sinal do RUN
-        uint32_t ticks = encoder_get_ticks();
-        uint32_t delta_ticks = ticks - last_ticks;
-        last_ticks = ticks;
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY); // espera início da prova
+        run_active = true;
 
-        if (ticks > 0) // só imprime quando está a contar
+        while (run_active)
         {
-            float velocity = (delta_ticks * dist_per_tick) / dt_s;
-            ESP_LOGI(TAG, "Ticks total: %" PRIu32 " | delta: %" PRIu32 " | Vel: %.3f m/s", ticks, delta_ticks, velocity);
+            encoder_total_ticks = encoder_get_ticks();
+            vTaskDelay(pdMS_TO_TICKS(10)); // 5ms é suficiente
         }
-        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
 
@@ -166,16 +175,82 @@ void runfollowerTask(void *pvParameters)
         // Espera até receber sinal de iniciar a prova
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY); // bloqueia até ser notificado pelo ControlTask
 
-        // LOOP CRÍTICO DA PROVA
-        while (!run_line_follower()) // retorna true quando a prova termina
-        {
-            vTaskDelay(pdMS_TO_TICKS(LOOP_DELAY_MS)); // loop rápido, ex: 1–2 ms
-            // taskYIELD(); // cede CPU brevemente sem dormir
-        }
+        // Inicializa subestado
+        dragster_substate_t state = SUBSTATE_START_LINE_IGNORE;
 
-        // Prova terminou, avisa ControlTask
-        xTaskNotifyGive(controlTaskHandle); // pode usar handle da task de controlo
+        while (run_active)
+        {
+            switch (state)
+            {
+            case SUBSTATE_START_LINE_IGNORE:
+                strip_set_green();    // opcional: mantém LEDs vermelhos acesos para indicar que parou
+                motors_set(200, 200); // velocidade baixa para sair da linha de partida
+                if (encoder_total_ticks >= IGNORE_LINE_TICKS)
+                {
+                    state = SUBSTATE_RUN;
+                    vTaskDelay(pdMS_TO_TICKS(5)); // permite que o FreeRTOS rode outras tasks
+                }
+                break;
+
+            case SUBSTATE_RUN:
+                strip_set_blue();    // opcional: mantém LEDs vermelhos acesos para indicar que parou
+                run_line_follower(); // PID + motores
+                if (encoder_total_ticks >= TICKS_REDUCE_SPEED)
+                    state = SUBSTATE_REDUCE;
+                break;
+
+            case SUBSTATE_REDUCE:
+                strip_set_yellow(); // opcional: mantém LEDs vermelhos acesos para indicar que parou
+                tuning.BASE_SPEED = 180;
+                tuning.KP = 38;
+                run_line_follower(); // PID + motores reduzidos
+                if (encoder_total_ticks >= TICKS_BRAKE_SPEED)
+                {
+                    state = SUBSTATE_REDUCE_LOOP; // entra no loop de redução até travar
+                }
+                break;
+
+            case SUBSTATE_REDUCE_LOOP:
+                strip_set_red();     // opcional: mantém LEDs vermelhos acesos para indicar que parou
+                run_line_follower(); // PID + motores reduzidos
+                if (encoder_total_ticks >= BREAK_TICKS)
+                {
+                    state = SUBSTATE_BRAKE; // começa travagem agressiva
+                }
+                break;
+
+            case SUBSTATE_BRAKE:
+                const int brake_delay = 5;            // atraso adicional para medir a velocidade
+                int prev_ticks = encoder_total_ticks; // captura ticks atuais para comparação
+                bool stopped = false;
+
+                while (!stopped)
+                {
+                    vTaskDelay(pdMS_TO_TICKS(brake_delay));  // espera um pouco para medir efeito
+                    int current_ticks = encoder_total_ticks; // lê ticks atuais
+                    int dticks = current_ticks - prev_ticks;
+                    prev_ticks = current_ticks;
+
+                    int pwm = dticks * KP_BRAKE; // cálculo de PWM baseado na velocidade atual
+                    if (pwm > MAX_BRAKE_PWM)
+                        pwm = MAX_BRAKE_PWM; // limita PWM para evitar danos
+
+                    motors_brake_set(pwm); // aplica travagem proporcional
+
+                    if (dticks <= STOP_THRESHOLD)
+                    {
+                        stopped = true;
+                        strip_set_color(); // opcional: mantém LEDs vermelhos acesos para indicar que parou
+                        motors_coast();    // desliga travagem para evitar sobreaquecimento
+                    }
+                }
+                run_active = false; // ← dentro do case
+                break;              // ← break do case
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(5)); // loop rápido sem travar CPU
     }
+    xTaskNotifyGive(controlTaskHandle); // Notifica ControlTask que a prova terminou
 }
 
 // ================================
@@ -233,13 +308,11 @@ void controlTask(void *pvParameters)
 
         case WAIT_START:
             motors_coast();
-            tuning_print_saved(); // opcional: imprime os valores carregados para confirmação
-
-            if (LED_START() > 1000) // Verifica se o valor do LED indica que está aceso
+            if (LED_START() > 2000) // Verifica se o valor do LED indica que está aceso
             {
                 if (ble_active)
                 {
-                    ble_stop_advertising();  // ← função pública do ble.h
+                    ble_stop_advertising(); // ← função pública do ble.h
                     ble_active = false;
                     ESP_LOGI(TAG, "BLE disabled before RUN");
                 }
@@ -253,9 +326,7 @@ void controlTask(void *pvParameters)
             // Notifica a task do line follower para iniciar
             xTaskNotifyGive(lineFollowerTaskHandle);
             xTaskNotifyGive(encoderTaskHandle); // dispara encoder ao mesmo tempo
-            // Espera que a prova termine
-            ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-            tuning_print_saved(); // ← lê e imprime da NVS no fim de cada prova
+            tuning_print_saved();               // ← lê e imprime da NVS no fim de cada prova
 
             // Liga o BLE se ainda não estiver ativo
             if (!ble_active)

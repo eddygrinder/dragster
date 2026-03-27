@@ -1,4 +1,10 @@
 // encoder.c
+/*
+2 metros	342 ticks
+9 metros	1535 ticks
+10 metros	1706 ticks
+*/
+
 #include "encoders.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -6,7 +12,9 @@
 #include "freertos/task.h"
 #include "esp_rom_sys.h"
 
-#define ENCODER_GPIO 39 // GPIO do encoder IR
+//#define ENCODER_GPIO 39 // GPIO do encoder IR direito
+#define ENCODER_GPIO 18 // GPIO do encoder IR esquerdo
+
 #define TAG_ENC "ENCODER"
 
 static volatile uint32_t tick_count = 0;
@@ -27,7 +35,7 @@ void encoder_init(void)
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_POSEDGE, // dispara no flanco de subida
+        .intr_type = GPIO_INTR_ANYEDGE, // dispara no flanco de subida
     };
     gpio_config(&cfg);
 

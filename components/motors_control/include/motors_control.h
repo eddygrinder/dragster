@@ -32,3 +32,4 @@ void motorControl(float line_position);
 void motors_set(int left_pwm, int right_pwm);
 void motors_stop_fast(void);
 void motors_coast(void);
+void motors_brake_set(int pwm);

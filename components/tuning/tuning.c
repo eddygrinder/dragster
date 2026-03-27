@@ -5,8 +5,8 @@
 
 // Instância global
 tuning_t tuning = {
-    .KP = 40,
-    .BASE_SPEED = 200,
+    .KP = 45,
+    .BASE_SPEED = 300,
     .BRAKE_DISTANCE_TICKS = 0 // valor inicial
 };
 
@@ -57,4 +57,47 @@ void tuning_print_saved()
     {
         ESP_LOGE("TUNING", "Não foi possível abrir NVS para leitura");
     }
+}
+
+void save_final_ticks(uint32_t ticks_final)
+{
+    nvs_handle_t nvs_handle;
+    esp_err_t err;
+
+    // abrir espaço "storage" para escrita
+    err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
+    if (err != ESP_OK)
+    {
+        printf("Erro ao abrir NVS\n");
+        return;
+    }
+
+    // gravar o valor
+    err = nvs_set_u32(nvs_handle, "tick_final", ticks_final);
+    if (err != ESP_OK)
+    {
+        printf("Erro ao gravar tick_final\n");
+    }
+    else
+    {
+        nvs_commit(nvs_handle); // obrigatório para efetivar
+        printf("tick_final gravado: %" PRIu32 "\n", ticks_final);
+    }
+
+    nvs_close(nvs_handle);
+}
+
+uint32_t read_final_ticks(void)
+{
+    nvs_handle_t nvs_handle;
+    uint32_t ticks = 0;
+
+    if (nvs_open("storage", NVS_READONLY, &nvs_handle) == ESP_OK)
+    {
+        nvs_get_u32(nvs_handle, "tick_final", &ticks);
+        nvs_close(nvs_handle);
+        ESP_LOGI("TUNING", "Valores salvos na NVS -> ticks: %" PRIu32, ticks);
+    }
+
+    return ticks; // necessário devolver o valor lido
 }
