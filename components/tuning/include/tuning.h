@@ -20,7 +20,7 @@
 #define BREAK_TICKS 620        // ticks correspondentes À DISTÂNCIA DE TRAVAGEM
 #define KP_BRAKE 8             // ganho de travagem - ajustável conforme testes
 #define MAX_BRAKE_PWM 800      // valor máximo de PWM para travagem segura sem queimar drivers - ajustável conforme testes
-#define STOP_THRESHOLD 5       // ticks por ciclo abaixo do qual consideramos que o robô parou - ajustável conforme testes
+#define STOP_THRESHOLD 20       // ticks por ciclo abaixo do qual consideramos que o robô parou - ajustável conforme testes
 #define IGNORE_LINE_TICKS 7    // ticks para ignorar a linha de partida (ajustar conforme necessário)
 
 

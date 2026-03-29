@@ -14,6 +14,8 @@
 #include "motors_control.h"
 #include "qtr_sensors.h"
 #include "encoders.h"
+#include "servo.h"
+
 // #include "braking.h"
 
 // ===============================
@@ -38,7 +40,7 @@ typedef struct
     float s1, s2, s3, s4; ///< Valores normalizados dos sensores
 } SensorValues;
 
-bool run_active = false; 
+bool run_active = false;
 
 // ===============================
 // Protótipos de funções
@@ -85,6 +87,9 @@ typedef enum
  */
 void app_main(void)
 {
+
+    // Inicializa servo no GPIO 14
+    servo_init(14);
 
     // Inicializar RGB interno
     rgb_init();
@@ -176,31 +181,25 @@ void runfollowerTask(void *pvParameters)
             switch (state)
             {
             case SUBSTATE_START_LINE_IGNORE:
-                strip_set_green();    // opcional: mantém LEDs vermelhos acesos para indicar que parou
+                strip_set_green();    // opcional: mantém LEDs verde acesos para indicar que parou
                 motors_set(200, 200); // velocidade baixa para sair da linha de partida
                 if (encoder_total_ticks >= IGNORE_LINE_TICKS)
                 {
-                    state = SUBSTATE_RUN;
-                    vTaskDelay(pdMS_TO_TICKS(5)); // permite que o FreeRTOS rode outras tasks
+                    state = SUBSTATE_RUN; // Tinha aqui um delay de 5ms
                 }
                 break;
 
             case SUBSTATE_RUN:
-                strip_set_blue();    // opcional: mantém LEDs vermelhos acesos para indicar que parou
-                run_line_follower(); // PID + motores
-                if (encoder_total_ticks >= TICKS_REDUCE_SPEED)
+                strip_set_blue();                              // opcional: mantém LEDs azuis acesos para indicar que parou
+                run_line_follower();                           // PID + motores
+                if (encoder_total_ticks >= TICKS_REDUCE_SPEED) // conta os ticks até 2 mts
                     state = SUBSTATE_REDUCE;
                 break;
 
             case SUBSTATE_REDUCE:
-                strip_set_yellow(); // opcional: mantém LEDs vermelhos acesos para indicar que parou
                 tuning.BASE_SPEED = 180;
                 tuning.KP = 38;
-                run_line_follower(); // PID + motores reduzidos
-                if (encoder_total_ticks >= TICKS_BRAKE_SPEED)
-                {
-                    state = SUBSTATE_REDUCE_LOOP; // entra no loop de redução até travar
-                }
+                state = SUBSTATE_REDUCE_LOOP; // entra no loop de redução até travar
                 break;
 
             case SUBSTATE_REDUCE_LOOP:
@@ -213,36 +212,34 @@ void runfollowerTask(void *pvParameters)
                 break;
 
             case SUBSTATE_BRAKE:
-                const int brake_delay = 5;            // atraso adicional para medir a velocidade
+            {
+                const int brake_delay = 20;           // atraso adicional para medir a velocidade
                 int prev_ticks = encoder_total_ticks; // captura ticks atuais para comparação
+                servo_set_angle(10);                  // travão mecânico IMEDIATO
 
-                while (1)
+                vTaskDelay(pdMS_TO_TICKS(brake_delay));  // espera um pouco para medir efeito
+                int current_ticks = encoder_total_ticks; // lê ticks atuais
+                int dticks = current_ticks - prev_ticks;
+                prev_ticks = current_ticks;
+
+                int pwm = dticks * KP_BRAKE; // cálculo de PWM baseado na velocidade atual
+                if (pwm > MAX_BRAKE_PWM)
+                    pwm = MAX_BRAKE_PWM; // limita PWM para evitar danos
+
+                motors_brake_set(pwm); // aplica travagem proporcional
+
+                if (dticks <= STOP_THRESHOLD) // 20 - se a velocidade for suficientemente baixa, considera que parou
                 {
-                    vTaskDelay(pdMS_TO_TICKS(brake_delay));  // espera um pouco para medir efeito
-                    int current_ticks = encoder_total_ticks; // lê ticks atuais
-                    int dticks = current_ticks - prev_ticks;
-                    prev_ticks = current_ticks;
-
-                    int pwm = dticks * KP_BRAKE; // cálculo de PWM baseado na velocidade atual
-                    if (pwm > MAX_BRAKE_PWM)
-                        pwm = MAX_BRAKE_PWM; // limita PWM para evitar danos
-
-                    motors_brake_set(pwm); // aplica travagem proporcional
-
-                    if (dticks <= STOP_THRESHOLD)
-                    {
-                        strip_set_color(); // opcional: mantém LEDs vermelhos acesos para indicar que parou
-                        motors_short_brake();    // desliga travagem para evitar sobreaquecimento
-                        break;             // sai do loop de travagem
-                    }
+                    strip_set_color();    // opcional: mantém LEDs vermelhos acesos para indicar que parou
+                    motors_short_brake(); // desliga travagem para evitar sobreaquecimento
+                    run_active = false;
+                    xTaskNotifyGive(controlTaskHandle); // Notifica ControlTask que a prova terminou
                 }
-                run_active = false; // ← dentro do case
-                break;              // ← break do case
+                break; // break do case
+            }
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(5)); // loop rápido sem travar CPU
     }
-    xTaskNotifyGive(controlTaskHandle); // Notifica ControlTask que a prova terminou
 }
 
 // ================================
@@ -279,6 +276,7 @@ void controlTask(void *pvParameters)
         {
         case WAIT_CALIB:
             motors_coast(); // garante que motores estão em coast enquanto espera
+
             if (calib_done)
             {
                 // Se já calibrado, pula direto para start

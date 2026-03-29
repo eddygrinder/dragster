@@ -159,7 +159,7 @@ bool run_line_follower()
     // perdeu a linha — só verifica após 300ms
     if (raw[1] < 200 && raw[2] < 200)
     {
-        motors_coast(); //
+        motors_coast(); 
         return true;
     }
 
