@@ -5,6 +5,8 @@
 #include "esp_rom_gpio.h"      // ← esp_rom_gpio_pad_select_gpio
 #include "motors_control.h"    // ← próprio header
 #include "tuning.h"            // ← tuning.KP, tuning.BASE_SPEED, MAX_DUTY_CYCLE
+#include "strip_leds.h"
+
 
 static int current_left_pwm = 0;
 static int current_right_pwm = 0;
@@ -159,6 +161,7 @@ void motors_set(int left_pwm, int right_pwm)
 
 void motors_brake_set(int pwm)
 {
+    strip_set_yellow();
     if (pwm > MAX_DUTY_CYCLE)
         pwm = MAX_DUTY_CYCLE;
     if (pwm < 0)
@@ -188,7 +191,7 @@ void motors_coast(void)
 
 void motors_short_brake(void)
 {
-    uint32_t intensity = 150; // valor baixo — trava suavemente - ajustável
+    uint32_t intensity = 600; // valor baixo — trava suavemente - ajustável
 
     ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ, intensity);
     ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ);

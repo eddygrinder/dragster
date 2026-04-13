@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "Dragster",
-    "project_version":    "89c834b-dirty",
+    "project_version":    "1d2a7b7-dirty",
     "project_path":       "C:/Users/ADMIN/Documents/GitHub/dragster",
     "idf_path":           "C:/Users/ADMIN/esp/v5.5.2/esp-idf",
     "build_dir":          "C:/Users/ADMIN/Documents/GitHub/dragster/build",
@@ -951,7 +951,7 @@
             "type": "LIBRARY",
             "lib": "__idf_motors_control",
             "reqs": [],
-            "priv_reqs": [ "main", "driver", "tuning", "freertos" ],
+            "priv_reqs": [ "main", "driver", "tuning", "strip_leds", "freertos" ],
             "managed_reqs": [],
             "managed_priv_reqs": [],
             "file": "C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/motors_control/libmotors_control.a",
@@ -2521,7 +2521,7 @@
             "dir": "C:/Users/ADMIN/Documents/GitHub/dragster/components/motors_control",
             "lib": "__idf_motors_control",
             "reqs": [],
-            "priv_reqs": [ "main", "driver", "tuning", "freertos" ],
+            "priv_reqs": [ "main", "driver", "tuning", "strip_leds", "freertos" ],
             "managed_reqs": [],
             "managed_priv_reqs": [],
             "include_dirs": [ "include" ]

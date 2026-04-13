@@ -5,8 +5,8 @@
 
 // Instância global
 tuning_t tuning = {
-    .KP = 45,
-    .BASE_SPEED = 300,
+    .KP = 32,
+    .BASE_SPEED = 400,
     .BRAKE_DISTANCE_TICKS = 0 // valor inicial
 };
 

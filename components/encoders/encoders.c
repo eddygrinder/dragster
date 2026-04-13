@@ -25,7 +25,7 @@ static void IRAM_ATTR encoder_isr_handler(void *arg)
 {
     tick_count++;
     // Temporário para debug — remove depois
-    esp_rom_printf("tick %lu\n", tick_count);
+    //esp_rom_printf("tick %lu\n", tick_count);
 }
 
 void encoder_init(void)
@@ -42,7 +42,7 @@ void encoder_init(void)
     gpio_install_isr_service(0); // instala serviço de ISR (só 1x no projecto)
     gpio_isr_handler_add(ENCODER_GPIO, encoder_isr_handler, NULL);
 
-    ESP_LOGI(TAG_ENC, "Encoder IR iniciado no GPIO %d", ENCODER_GPIO);
+    //ESP_LOGI(TAG_ENC, "Encoder IR iniciado no GPIO %d", ENCODER_GPIO);
 }
 
 uint32_t encoder_get_ticks(void)

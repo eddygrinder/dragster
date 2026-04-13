@@ -15,13 +15,12 @@
 #define LOOP_DELAY_MS 2          ///< Delay do loop principal em ms
 #define CALIBRATION_TIME_MS 5000 ///< Duração da calibração em ms
 
-#define TICKS_REDUCE_SPEED 340 // ticks correspondentes a 2 m
-#define TICKS_BRAKE_SPEED 480  // ticks correspondentes à travagem
-#define BREAK_TICKS 620        // ticks correspondentes À DISTÂNCIA DE TRAVAGEM
-#define KP_BRAKE 8             // ganho de travagem - ajustável conforme testes
-#define MAX_BRAKE_PWM 800      // valor máximo de PWM para travagem segura sem queimar drivers - ajustável conforme testes
-#define STOP_THRESHOLD 20       // ticks por ciclo abaixo do qual consideramos que o robô parou - ajustável conforme testes
-#define IGNORE_LINE_TICKS 7    // ticks para ignorar a linha de partida (ajustar conforme necessário)
+#define TICKS_REDUCE_SPEED 1364 // ticks correspondentes a 8 m VERIFICAR
+#define BREAK_TICKS 1700        // ticks correspondentes À DISTÂNCIA DE TRAVAGEM
+#define KP_BRAKE 200             // ganho de travagem - ajustável conforme testes
+#define MAX_BRAKE_PWM 1000      // valor máximo de PWM para travagem segura sem queimar drivers - ajustável conforme testes
+#define STOP_THRESHOLD 3       // ticks por ciclo abaixo do qual consideramos que o robô parou - ajustável conforme testes
+#define IGNORE_LINE_TICKS 5    // ticks para ignorar a linha de partida (ajustar conforme necessário)
 
 
 // -------------------------------

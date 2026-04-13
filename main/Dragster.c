@@ -29,6 +29,8 @@ bool calib_done = false; // Flag calibração
 
 volatile uint32_t encoder_total_ticks = 0;
 
+TickType_t reduce_loop_start_tick = 0; // declarar fora do switch, junto das outras variáveis de estado
+
 // ===============================
 // Estruturas de dados
 // ===============================
@@ -75,9 +77,9 @@ typedef enum
 
 typedef enum
 {
-    SUBSTATE_RUN,              // velocidade normal
-    SUBSTATE_REDUCE,           // redução de velocidade
-    SUBSTATE_BRAKE,            // travagem ativa
+    SUBSTATE_RUN,    // velocidade normal
+    SUBSTATE_REDUCE, // redução de velocidade
+    // SUBSTATE_BRAKE,            // travagem ativa
     SUBSTATE_REDUCE_LOOP,      // loop de redução até atingir o ponto de travagem
     SUBSTATE_START_LINE_IGNORE // subestado inicial para ignorar a linha de partida
 } dragster_substate_t;
@@ -181,7 +183,6 @@ void runfollowerTask(void *pvParameters)
             switch (state)
             {
             case SUBSTATE_START_LINE_IGNORE:
-                strip_set_green();    // opcional: mantém LEDs verde acesos para indicar que parou
                 motors_set(200, 200); // velocidade baixa para sair da linha de partida
                 if (encoder_total_ticks >= IGNORE_LINE_TICKS)
                 {
@@ -197,46 +198,29 @@ void runfollowerTask(void *pvParameters)
                 break;
 
             case SUBSTATE_REDUCE:
+                reduce_loop_start_tick = xTaskGetTickCount(); // guarda o momento de entrada
                 tuning.BASE_SPEED = 180;
                 tuning.KP = 38;
-                state = SUBSTATE_REDUCE_LOOP; // entra no loop de redução até travar
+                state = SUBSTATE_REDUCE_LOOP;
                 break;
 
             case SUBSTATE_REDUCE_LOOP:
-                strip_set_red();     // opcional: mantém LEDs vermelhos acesos para indicar que parou
-                run_line_follower(); // PID + motores reduzidos
-                if (encoder_total_ticks >= BREAK_TICKS)
+                strip_set_red();
+                run_line_follower(); // continua PID com velocidade reduzida
+
+                if ((xTaskGetTickCount() - reduce_loop_start_tick) >= pdMS_TO_TICKS(4000))
                 {
-                    state = SUBSTATE_BRAKE; // começa travagem agressiva
+                    servo_set_angle(0); // liberta servo após 4 segundos
+                    run_active = false;
+                    motors_coast();
+                    strip_set_color(); // apaga LEDs para indicar que parou
+                }
+                else
+                {
+                    servo_set_angle(28); // travão mecânico durante os 4 segundos
+                    strip_set_green();
                 }
                 break;
-
-            case SUBSTATE_BRAKE:
-            {
-                const int brake_delay = 20;           // atraso adicional para medir a velocidade
-                int prev_ticks = encoder_total_ticks; // captura ticks atuais para comparação
-                servo_set_angle(10);                  // travão mecânico IMEDIATO
-
-                vTaskDelay(pdMS_TO_TICKS(brake_delay));  // espera um pouco para medir efeito
-                int current_ticks = encoder_total_ticks; // lê ticks atuais
-                int dticks = current_ticks - prev_ticks;
-                prev_ticks = current_ticks;
-
-                int pwm = dticks * KP_BRAKE; // cálculo de PWM baseado na velocidade atual
-                if (pwm > MAX_BRAKE_PWM)
-                    pwm = MAX_BRAKE_PWM; // limita PWM para evitar danos
-
-                motors_brake_set(pwm); // aplica travagem proporcional
-
-                if (dticks <= STOP_THRESHOLD) // 20 - se a velocidade for suficientemente baixa, considera que parou
-                {
-                    strip_set_color();    // opcional: mantém LEDs vermelhos acesos para indicar que parou
-                    motors_short_brake(); // desliga travagem para evitar sobreaquecimento
-                    run_active = false;
-                    xTaskNotifyGive(controlTaskHandle); // Notifica ControlTask que a prova terminou
-                }
-                break; // break do case
-            }
             }
         }
     }

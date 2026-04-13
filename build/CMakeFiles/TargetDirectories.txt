@@ -605,6 +605,13 @@ C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/tuning/CMakeFiles/list_in
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/tuning/CMakeFiles/install.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/tuning/CMakeFiles/install/local.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/tuning/CMakeFiles/install/strip.dir
+C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/strip_leds/CMakeFiles/__idf_strip_leds.dir
+C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/strip_leds/CMakeFiles/edit_cache.dir
+C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/strip_leds/CMakeFiles/rebuild_cache.dir
+C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/strip_leds/CMakeFiles/list_install_components.dir
+C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/strip_leds/CMakeFiles/install.dir
+C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/strip_leds/CMakeFiles/install/local.dir
+C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/strip_leds/CMakeFiles/install/strip.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/motors_control/CMakeFiles/__idf_motors_control.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/motors_control/CMakeFiles/edit_cache.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/motors_control/CMakeFiles/rebuild_cache.dir
@@ -619,13 +626,6 @@ C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/ble/CMakeFiles/list_insta
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/ble/CMakeFiles/install.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/ble/CMakeFiles/install/local.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/ble/CMakeFiles/install/strip.dir
-C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/strip_leds/CMakeFiles/__idf_strip_leds.dir
-C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/strip_leds/CMakeFiles/edit_cache.dir
-C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/strip_leds/CMakeFiles/rebuild_cache.dir
-C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/strip_leds/CMakeFiles/list_install_components.dir
-C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/strip_leds/CMakeFiles/install.dir
-C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/strip_leds/CMakeFiles/install/local.dir
-C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/strip_leds/CMakeFiles/install/strip.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/esp_adc/CMakeFiles/__idf_esp_adc.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/esp_adc/CMakeFiles/edit_cache.dir
 C:/Users/ADMIN/Documents/GitHub/dragster/build/esp-idf/esp_adc/CMakeFiles/rebuild_cache.dir
