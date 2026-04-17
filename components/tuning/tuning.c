@@ -3,10 +3,17 @@
 #include "nvs.h"
 #include "esp_log.h"
 
+/*
+400, 32
+420, 25
+430, 20 - 2.85 seg 
+440, 18 -  seg
+*/
+
 // Instância global
 tuning_t tuning = {
-    .KP = 32,
-    .BASE_SPEED = 400,
+    .KP = 20,
+    .BASE_SPEED = 430,
     .BRAKE_DISTANCE_TICKS = 0 // valor inicial
 };
 
