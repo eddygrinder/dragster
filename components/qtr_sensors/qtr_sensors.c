@@ -49,7 +49,6 @@ int LED_START(void)
 {
     int raw_led;
     adc_oneshot_read(adc1_handle, LED_CHANNEL, &raw_led);
-    // ESP_LOGI(TAG, "LED raw value: %d", raw_led);
     return raw_led;
 }
 
@@ -157,9 +156,12 @@ bool run_line_follower()
     }
 
     // perdeu a linha — só verifica após 300ms
-    if (raw[1] < 200 && raw[2] < 200)
+    float threshold = calibData.sMin[1] +
+                      (calibData.sMax[1] - calibData.sMin[1]) * 0.25f;
+
+    if (raw[1] < threshold && raw[2] < threshold)
     {
-        motors_coast(); 
+        motors_coast();
         return true;
     }
 

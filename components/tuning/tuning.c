@@ -4,18 +4,29 @@
 #include "esp_log.h"
 
 /*
-400, 32
-420, 25
-430, 20 - 2.85 seg 
-440, 18 -  seg
+250, 42 - 2.85 seg
+260, 35 - OK 
+270, 35 - Optimo
+280, 33 - Optimo - FALSO
+280, 27 - VERIFICAR
+300, 32/31 - OK
+310, 40 - OPTIMO
+PROVA: 235, 55
+testes: 
+245, 76
+teste: 250, 94 - APARENTEMENTE, OK
+PROXIMO PASSO, 250, ?
+260, 98
 */
 
 // Instância global
 tuning_t tuning = {
-    .KP = 20,
-    .BASE_SPEED = 430,
+    .KP = 98,
+    .BASE_SPEED = 290,
+    .KD = 10,
     .BRAKE_DISTANCE_TICKS = 0 // valor inicial
 };
+
 
 void tuning_load()
 {

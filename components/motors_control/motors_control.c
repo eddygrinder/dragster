@@ -7,7 +7,6 @@
 #include "tuning.h"            // ← tuning.KP, tuning.BASE_SPEED, MAX_DUTY_CYCLE
 #include "strip_leds.h"
 
-
 static int current_left_pwm = 0;
 static int current_right_pwm = 0;
 
@@ -126,7 +125,11 @@ void motorControl(float line_position)
     ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE);
 
     float erro = 0.0f - line_position; // queremos linha centrada = 0
-    float correcao = tuning.KP * erro;
+    // float correcao = tuning.KP * erro;
+    static float last_erro = 0.0f;
+    float d_erro = erro - last_erro;
+    last_erro = erro;
+    float correcao = tuning.KP * erro + tuning.KD * d_erro;
 
     int left_pwm = tuning.BASE_SPEED - correcao;
     int right_pwm = tuning.BASE_SPEED + correcao;
@@ -179,7 +182,7 @@ void motors_coast(void)
     ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ);
     ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA, 0);
     ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA);
-    
+
     ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE, 0);
     ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_ESQ_BRAKE);
     ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_DTA_BRAKE, 0);

@@ -24,7 +24,7 @@
 
 #define BTN_CAL 48 ///< GPIO do botão de calibração
 
-// ----- Botões -----y
+// ----- Botões -----
 bool calib_done = false; // Flag calibração
 
 volatile uint32_t encoder_total_ticks = 0;
@@ -163,7 +163,7 @@ void encoderTestTask(void *pvParameters)
         while (run_active)
         {
             encoder_total_ticks = encoder_get_ticks();
-            vTaskDelay(pdMS_TO_TICKS(10)); // 5ms é suficiente
+            vTaskDelay(pdMS_TO_TICKS(2)); // 2ms é suficiente
         }
     }
 }
@@ -176,14 +176,19 @@ void runfollowerTask(void *pvParameters)
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY); // bloqueia até ser notificado pelo ControlTask
 
         // Inicializa subestado
-        dragster_substate_t state = SUBSTATE_START_LINE_IGNORE;
+        encoder_total_ticks = 0; // ← reset aqui também
+        reduce_loop_start_tick = 0;
+        dragster_substate_t state = SUBSTATE_RUN; // ← começa direto aqui
+        motors_set(400, 400);
+        vTaskDelay(pdMS_TO_TICKS(100));
 
         while (run_active)
         {
             switch (state)
             {
+                // Depois no substate:
             case SUBSTATE_START_LINE_IGNORE:
-                motors_set(200, 200); // velocidade baixa para sair da linha de partida
+                motors_set(300, 300); // velocidade baixa para sair da linha de partida
                 if (encoder_total_ticks >= IGNORE_LINE_TICKS)
                 {
                     state = SUBSTATE_RUN; // Tinha aqui um delay de 5ms
@@ -205,7 +210,6 @@ void runfollowerTask(void *pvParameters)
                 break;
 
             case SUBSTATE_REDUCE_LOOP:
-                strip_set_red();
                 run_line_follower(); // continua PID com velocidade reduzida
 
                 if ((xTaskGetTickCount() - reduce_loop_start_tick) >= pdMS_TO_TICKS(4000))
@@ -266,37 +270,43 @@ void controlTask(void *pvParameters)
                 // Se já calibrado, pula direto para start
                 state = WAIT_START;
             }
-            else if (!calib_button_pressed())
             {
-                state = CALIBRATING;
+                // ← REMOVIDO: espera pelo botão
+                // Liga BLE para já poderes tunar durante a calibração
+                if (!ble_active)
+                {
+                    ble_restart_advertising();
+                    ble_active = true;
+                    ESP_LOGI(TAG, "BLE active - ready for tuning");
+                }
+                state = CALIBRATING; // ← vai direto calibrar
             }
             break;
-
         case CALIBRATING:
             strip_set_color();
             motors_coast();
             qtr_calibrate(duration_ms); // corre UMA VEZ
-            calib_done = true;          // Marca calibração feita
+            calib_done = true;
             state = WAIT_START;
             break;
-
         case WAIT_START:
             motors_coast();
-            if (LED_START() > 2000) // Verifica se o valor do LED indica que está aceso
+            if (LED_START() > 2000)
             {
                 if (ble_active)
                 {
-                    ble_stop_advertising(); // ← função pública do ble.h
+                    ble_stop_advertising();
                     ble_active = false;
                     ESP_LOGI(TAG, "BLE disabled before RUN");
                 }
                 state = RUN;
             }
-            vTaskDelay(pdMS_TO_TICKS(100));
+            vTaskDelay(pdMS_TO_TICKS(10));
             break;
 
         case RUN:
             encoder_reset_ticks();
+            encoder_total_ticks = 0; // ← adiciona esta linha
             // Notifica a task do line follower para iniciar
             xTaskNotifyGive(lineFollowerTaskHandle);
             xTaskNotifyGive(encoderTaskHandle); // dispara encoder ao mesmo tempo
@@ -331,7 +341,7 @@ bool calib_button_pressed(void)
     }
 
     // **cede CPU para não disparar watchdog**
-    vTaskDelay(pdMS_TO_TICKS(10)); // ou taskYIELD()
+    vTaskDelay(pdMS_TO_TICKS(2)); // ou taskYIELD()
 
     return (level == 1); // devolve true se botão pressionado
 }
